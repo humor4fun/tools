@@ -24,6 +24,26 @@ The tool scans the folder, builds a file tree in the sidebar, and opens `README.
 
 ---
 
+## Terminal shortcut (`mdweb` command)
+
+You can open mdweb directly from your terminal using a shell function. Add the following to your `~/.zshrc` (or `~/.bashrc`):
+
+```zsh
+mdweb() {
+  open -a "Google Chrome" "file:///path/to/mdweb/index.html?autoopen"
+}
+```
+
+Replace `/path/to/mdweb/index.html` with the actual path to `index.html` on your machine.
+
+After reloading your shell (`source ~/.zshrc`), typing `mdweb` in any directory will open the tool in Chrome with the folder picker dialog already open — no button click needed.
+
+**Note:** Due to browser security restrictions, the picker dialog cannot pre-navigate to the directory you ran `mdweb` from. You will still need to navigate to the desired folder in the OS dialog. The dialog typically remembers the last folder you selected.
+
+**How it works:** When `index.html` is opened with the `?autoopen` query parameter, the app automatically calls `showDirectoryPicker()` on load instead of waiting for a button click.
+
+---
+
 ## Supported file types
 
 Files are grouped into four categories. Each category has a distinct display mode and coloured label.

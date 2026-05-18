@@ -1981,6 +1981,21 @@ if (!('showDirectoryPicker' in window)) {
   sidebarWelcome.innerHTML = `<p style="color:var(--text-muted);font-size:12px;text-align:center;padding:16px;">This app requires Chrome or Edge.<br>Your current browser is not supported.</p>`;
   welcomeContent.querySelector('p').textContent = 'This app requires Chrome or Edge. Please reopen in a supported browser.';
 }
+
+// ── Auto-open via ?autoopen URL param ─────────────────────────────────────────
+// When opened with ?autoopen (e.g. via the `mdweb` shell command), automatically
+// trigger the folder picker dialog so the user doesn't have to click Open Folder.
+(async () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('autoopen') && 'showDirectoryPicker' in window) {
+    try {
+      const handle = await window.showDirectoryPicker({ mode: 'read' });
+      await loadFolder(handle);
+    } catch (e) {
+      if (e.name !== 'AbortError') console.error('Auto-open picker:', e);
+    }
+  }
+})();
 </script>
 </body>
 </html>
