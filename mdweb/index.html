@@ -1079,6 +1079,7 @@ const state = {
   treeCollapsed:    false,  // true when user has collapsed all tree dirs
   showAllFiles:     false,  // when true, show unsupported/binary files in tree + allow hex view
   hexMode:          false,  // currently showing hex view
+  beautifyMode:     false,  // view-only formatted display (file not modified)
   hexPage:          0,      // current hex page index
   hexBuffer:        null,   // ArrayBuffer of the current hex file
   hexSizeWarned:    new Set(), // paths the user has already click-through'd the size warning for
@@ -1440,7 +1441,8 @@ async function loadFolder(handle) {
   updateCollapseBtn();
   state.showAllFiles = false;
   updateToggleAllFilesBtn();
-  state.hexMode = false;
+  state.hexMode      = false;
+  state.beautifyMode = false;
   startWatching();
 
   logActivity(`Opened folder: ${handle.name}`, { type: 'ok' });
@@ -1878,39 +1880,32 @@ function prettyXml(node, depth) {
   return `${pad}<${tag}${attrs}>\n${inner}${pad}</${tag}>\n`;
 }
 
-async function doBeautify() {
+// Toggle beautify view mode — does NOT modify the file.
+// When on, the reader shows a formatted/prettified version.
+// When off, it reverts to the raw file content.
+function toggleBeautify() {
   const ft = state.currentFileType;
   if (!ft || !ft.lang || !BEAUTIFY_LANGS.has(ft.lang)) return;
-  if (state.editMode) {
-    const pretty = beautifyText(editor.value, ft.lang);
-    if (pretty === editor.value) { showToast('Already formatted', { type: 'ok', duration: 2000 }); return; }
-    editor.value = pretty;
-    editor.dispatchEvent(new Event('input'));
-    showToast('Formatted', { type: 'ok', duration: 2000 });
-  } else {
-    // Read mode: format and save
-    const handle = state.files.get(state.currentPath);
-    if (!handle) return;
-    if (!state.writePermission) {
-      const perm = await state.rootHandle.requestPermission({ mode: 'readwrite' });
-      if (perm !== 'granted') { showPermDenied(); return; }
-      state.writePermission = true;
-    }
-    const pretty = beautifyText(state.currentRawText, ft.lang);
-    if (pretty === state.currentRawText) { showToast('Already formatted', { type: 'ok', duration: 2000 }); return; }
-    try {
-      const w = await handle.createWritable();
-      await w.write(pretty); await w.close();
-      state.currentRawText = pretty;
-      renderForType(ft.category === 'markdown' ? parseFileMeta(pretty).body : pretty, ft, readerInner);
-      logActivity(`Formatted: ${state.currentPath.split('/').pop()}`, { type: 'ok', ref: `file:${state.currentPath}` });
-      showToast('Formatted & saved', { type: 'ok', duration: 2000 });
-    } catch(e) {
-      showToast('Beautify failed: ' + e.message, { type: 'error' });
-    }
-  }
+  if (state.editMode) return;   // disabled while editing
+
+  state.beautifyMode = !state.beautifyMode;
+  applyBeautifyView();
+  syncToolbar();
 }
-btnBeautify && btnBeautify.addEventListener('click', doBeautify);
+
+function applyBeautifyView() {
+  const ft = state.currentFileType;
+  if (!ft) return;
+  const text = state.beautifyMode
+    ? beautifyText(state.currentRawText, ft.lang)
+    : state.currentRawText;
+  metaStrip.classList.remove('visible');
+  metaStrip.innerHTML = '';
+  renderForType(text, ft, readerInner);
+  reader.scrollTop = 0;
+}
+
+btnBeautify && btnBeautify.addEventListener('click', toggleBeautify);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function findFile(name) {
@@ -2268,9 +2263,10 @@ async function openFile(path) {
   }
   if (state.editMode) leaveEditMode();
 
-  // Clear hex state when navigating to a new file
-  state.hexMode   = false;
-  state.hexBuffer = null;
+  // Clear hex and beautify state when navigating to a new file
+  state.hexMode      = false;
+  state.hexBuffer    = null;
+  state.beautifyMode = false;
 
   state.currentPath    = path;
   state.currentDirPath = null;
@@ -2641,7 +2637,8 @@ function syncToolbar() {
   // Beautify button: visible when file has a beautifiable lang and not in hex mode
   const canBeautify = ft && ft.lang && BEAUTIFY_LANGS.has(ft.lang);
   if (btnBeautify) {
-    btnBeautify.style.display = (state.currentPath && canBeautify) ? '' : 'none';
+    btnBeautify.style.display = (state.currentPath && canBeautify && !state.editMode) ? '' : 'none';
+    btnBeautify.classList.toggle('active', state.beautifyMode);
   }
 
   if (state.editMode) {
@@ -2655,10 +2652,13 @@ function syncToolbar() {
   } else {
     btnReveal.style.display  = state.currentPath ? '' : 'none';
     btnRefresh.style.display = state.currentPath ? '' : 'none';
-    // Dim Edit button for non-editable file types
+    // Dim Edit button when beautify mode is active (editing raw vs. formatted would be confusing)
+    const editBlocked = canEdit && state.beautifyMode;
     btnEdit.style.display    = '';
-    btnEdit.style.opacity    = canEdit ? '' : '0.35';
-    btnEdit.title            = canEdit ? '' : 'This file type cannot be edited';
+    btnEdit.style.opacity    = (!canEdit || state.beautifyMode) ? '0.35' : '';
+    btnEdit.title            = !canEdit ? 'This file type cannot be edited'
+                              : state.beautifyMode ? 'Exit beautify view to edit'
+                              : '';
     btnCancel.style.display  = 'none';
     btnSave.style.display    = 'none';
   }
@@ -2713,13 +2713,13 @@ function updateLineNumbers() {
 async function enterEditMode() {
   if (!state.currentPath) return;
 
-  // Block editing of non-editable files
+  // Block editing of non-editable files or while beautify view is active
   const ft  = state.currentFileType;
   const cat = ft && ft.category;
   const canEdit = ft && (ft.canEdit === true || (cat && cat !== 'viewable' && cat !== 'unsupported' && cat !== 'image'));
-  if (!canEdit) {
+  if (!canEdit || state.beautifyMode) {
     const origHTML = btnEdit.innerHTML;
-    btnEdit.textContent = '⚠ View only';
+    btnEdit.textContent = state.beautifyMode ? '⚠ Exit beautify first' : '⚠ View only';
     btnEdit.style.opacity = '0.6';
     setTimeout(() => { btnEdit.innerHTML = origHTML; btnEdit.style.opacity = ''; }, 2000);
     return;
@@ -2892,6 +2892,7 @@ async function refreshFile() {
 
   state.currentRawText = text;
   state.dirty = false;
+  state.beautifyMode = false;   // reset beautify on reload
   updateTreeDirtyState();
 
   // Re-render
