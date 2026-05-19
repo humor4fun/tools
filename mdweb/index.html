@@ -228,6 +228,25 @@
   #perm-msg.visible { display: flex; }
   .tb-sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
 
+  /* ── Toast notification ───────────────────────────────────── */
+  #toast {
+    position: fixed; top: 16px; right: 16px; z-index: 2000;
+    background: var(--bg-sidebar); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px 16px;
+    font-size: 12.5px; color: var(--text);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    opacity: 0; transform: translateY(-8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none; max-width: 300px; line-height: 1.4;
+  }
+  #toast.visible {
+    opacity: 1; transform: translateY(0);
+    pointer-events: auto;
+  }
+  #toast.toast-error { border-color: #f85149; color: #f85149; }
+  #toast.toast-warn  { border-color: var(--badge-amber-t); color: var(--badge-amber-t); }
+  #toast.toast-ok    { border-color: var(--accent-green); color: #4ade80; }
+
   /* ── Meta strip ───────────────────────────────────────────── */
   #meta-strip {
     display: none; flex-wrap: wrap; align-items: center; gap: 6px;
@@ -1022,6 +1041,21 @@ async function startWatching() {
       stopWatching();
     }
   }, 10000);
+}
+
+// ── Toast notification ────────────────────────────────────────────────────────
+let _toastTimer = null;
+const toast = document.getElementById('toast');
+
+// showToast(msg, { type: 'error'|'warn'|'ok'|'', duration: ms })
+// duration=0 means stay until dismissed.
+function showToast(msg, { type = '', duration = 5000 } = {}) {
+  clearTimeout(_toastTimer);
+  toast.textContent = msg;
+  toast.className = 'visible' + (type ? ` toast-${type}` : '');
+  if (duration > 0) {
+    _toastTimer = setTimeout(() => toast.classList.remove('visible'), duration);
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -2108,5 +2142,6 @@ if (!('showDirectoryPicker' in window)) {
   }
 })();
 </script>
+<div id="toast"></div>
 </body>
 </html>
