@@ -116,13 +116,17 @@
 
   #sidebar-bottom { border-top: 1px solid var(--border-light); padding: 8px 10px; flex-shrink: 0; display: none; }
   #sidebar-bottom.visible { display: flex; flex-direction: column; gap: 2px; }
-  #btn-change-folder, #btn-refresh-tree, #btn-collapse-all, #btn-new-file {
+  #btn-change-folder, #btn-refresh-tree, #btn-collapse-all, #btn-new-file, #btn-toggle-all-files {
     display: flex; align-items: center; gap: 6px; background: transparent; border: none;
     color: var(--text-dim); font-size: 11px; cursor: pointer; padding: 4px 6px;
     border-radius: 4px; width: 100%; transition: color 0.15s, background 0.15s;
   }
   #btn-change-folder:hover, #btn-refresh-tree:hover,
-  #btn-collapse-all:hover, #btn-new-file:hover { color: var(--text-muted); background: var(--bg-hover); }
+  #btn-collapse-all:hover, #btn-new-file:hover,
+  #btn-toggle-all-files:hover { color: var(--text-muted); background: var(--bg-hover); }
+  #btn-toggle-all-files.active { color: #58a6ff; }
+
+  .tree-item[data-toggle-hidden] { display: none !important; }
 
   /* ── Tree ─────────────────────────────────────────────────── */
   .tree-item {
@@ -590,6 +594,123 @@
   .notice-pane-icon { font-size: 32px; opacity: 0.35; }
   .notice-pane-title { font-size: 15px; font-weight: 600; color: var(--text-heading); }
   .notice-pane-sub { font-size: 13px; color: var(--text-dim); max-width: 340px; line-height: 1.7; }
+  .notice-pane-btn {
+    margin-top: 8px; padding: 7px 18px; background: var(--accent-blue); color: #fff;
+    border: none; border-radius: var(--radius); font-size: 13px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .notice-pane-btn:hover { background: var(--accent-blue-h); }
+
+  /* ── Hex viewer ────────────────────────────────────────────── */
+  #reader-inner.hex-mode {
+    display: flex; gap: 0; max-width: none; margin: 0;
+    height: 100%; min-height: 0;
+  }
+  #hex-index {
+    width: 148px; flex-shrink: 0; overflow-y: auto; border-right: 1px solid var(--border);
+    padding: 8px 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  #hex-index::-webkit-scrollbar { width: 4px; }
+  #hex-index::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .hex-index-heading {
+    font-size: 10px; color: var(--text-dim); padding: 2px 10px 6px;
+    text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--font-sans);
+  }
+  .hex-index-item {
+    display: block; padding: 4px 10px; font-size: 11px; font-family: var(--font-mono);
+    color: var(--text-muted); cursor: pointer; border-radius: 0;
+    transition: background 0.1s, color 0.1s; white-space: nowrap;
+  }
+  .hex-index-item:hover { background: var(--bg-hover); color: var(--text); }
+  .hex-index-item.active { background: var(--bg-active); color: var(--text-heading); }
+  #hex-content {
+    flex: 1; overflow: auto; padding: 16px 20px;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  #hex-content::-webkit-scrollbar { width: 6px; }
+  #hex-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  #hex-pre {
+    font-family: var(--font-mono); font-size: 12px; line-height: 1.6;
+    color: var(--text); white-space: pre; margin: 0;
+  }
+  .hex-offset { color: var(--text-dim); }
+  .hex-bytes  { color: var(--text); }
+  .hex-ascii  { color: var(--text-muted); }
+  #hex-footer {
+    font-size: 11px; color: var(--text-dim); padding: 10px 0 0;
+    font-family: var(--font-sans);
+  }
+
+  /* ── Activity Log panel ────────────────────────────────────── */
+  #activity-log {
+    position: fixed; right: 0; top: var(--header-h); bottom: 0;
+    width: 280px; transform: translateX(100%);
+    transition: transform 0.2s ease;
+    background: var(--bg-sidebar); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; z-index: 50;
+  }
+  #activity-log.visible { transform: none; }
+  #activity-log-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #activity-log-title {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  #activity-log-clear {
+    background: none; border: none; color: var(--text-dim); cursor: pointer;
+    font-size: 10px; padding: 2px 4px; border-radius: 3px;
+    transition: color 0.15s, background 0.15s;
+  }
+  #activity-log-clear:hover { color: var(--text-muted); background: var(--bg-hover); }
+  #activity-log-body {
+    flex: 1; overflow-y: auto; padding: 4px 0;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  #activity-log-body::-webkit-scrollbar { width: 4px; }
+  #activity-log-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .log-entry {
+    display: flex; gap: 8px; align-items: flex-start;
+    padding: 5px 10px; cursor: default;
+    border-bottom: 1px solid transparent; transition: background 0.1s;
+  }
+  .log-entry.log-clickable { cursor: pointer; }
+  .log-entry:hover { background: var(--bg-hover); }
+  .log-entry-time {
+    color: var(--text-dim); flex-shrink: 0;
+    font-family: var(--font-mono); font-size: 10px;
+    padding-top: 1px;
+  }
+  .log-entry-msg { color: var(--text-muted); flex: 1; line-height: 1.45; font-size: 11.5px; }
+  .log-entry.log-error .log-entry-msg { color: #f87171; }
+  .log-entry.log-warn  .log-entry-msg { color: var(--badge-amber-t); }
+  .log-entry.log-ok    .log-entry-msg { color: #4ade80; }
+  .log-empty {
+    padding: 24px 16px; font-size: 11px; color: var(--text-dim);
+    text-align: center; font-style: italic;
+  }
+
+  @keyframes log-blink {
+    0%, 100% { background: transparent; outline: none; }
+    25%, 75%  { background: var(--bg-active); outline: 2px solid var(--accent-blue); outline-offset: -2px; }
+  }
+  .log-highlight { animation: log-blink 1.2s ease 1; border-radius: 4px; }
+
+  /* ── Header log toggle button ──────────────────────────────── */
+  #btn-toggle-log {
+    display: flex; align-items: center; gap: 5px; background: transparent; border: none;
+    color: var(--text-dim); font-size: 11px; cursor: pointer; padding: 4px 8px;
+    border-radius: 4px; transition: color 0.15s, background 0.15s; flex-shrink: 0;
+    margin-left: auto;
+  }
+  #btn-toggle-log:hover { color: var(--text-muted); background: var(--bg-hover); }
+  #btn-toggle-log.active { color: #58a6ff; }
+
+  /* When activity log is open, shift content pane right */
+  #content-pane { transition: padding-right 0.2s ease; }
+  #content-pane.log-open { padding-right: 280px; }
 </style>
 </head>
 <body>
@@ -606,6 +727,10 @@
       mdweb
     </div>
     <span id="header-folder-name"></span>
+    <button id="btn-toggle-log" title="Toggle activity log">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3a2 2 0 0 0-2 2v.5H2a1 1 0 0 0-1 1V13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-1V5a2 2 0 0 0-2-2H5zm7 2.5V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v.5h8zM2 7.5h12V13H2V7.5zm2 2a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5z"/></svg>
+      Log
+    </button>
   </header>
 
   <aside id="sidebar">
@@ -648,6 +773,10 @@
       <button id="btn-new-file" title="Create new file in current folder">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/></svg>
         New file
+      </button>
+      <button id="btn-toggle-all-files" title="Toggle showing all files including binary/unsupported">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2zm.854 4.854a.5.5 0 0 0-.708-.708l-1 1a.5.5 0 0 0 0 .708l1 1a.5.5 0 0 0 .708-.708L2.207 5.5l.647-.646zm2.5 0a.5.5 0 0 0-.708-.708l-1 1a.5.5 0 0 0 0 .708l1 1a.5.5 0 0 0 .708-.708L4.707 5.5l.647-.646zM8 5a.5.5 0 0 0 0 1h5.5a.5.5 0 0 0 0-1H8zm0 2.5a.5.5 0 0 0 0 1h5.5a.5.5 0 0 0 0-1H8zm0 2.5a.5.5 0 0 0 0 1h5.5a.5.5 0 0 0 0-1H8zm-7 1a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-2zm1 .5v1h1v-1H2z"/></svg>
+        <span class="tree-btn-label">Show all files</span>
       </button>
       <button id="btn-change-folder">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.764c.958 0 1.76.56 2.311 1.184C8.17 3.71 8.692 4 9.5 4H13.5A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5z"/></svg>
@@ -726,6 +855,16 @@
     </div>
 
   </main>
+</div>
+
+<div id="activity-log">
+  <div id="activity-log-header">
+    <span id="activity-log-title">Activity Log</span>
+    <button id="activity-log-clear" title="Clear log">Clear</button>
+  </div>
+  <div id="activity-log-body">
+    <div class="log-empty">No activity yet.</div>
+  </div>
 </div>
 
 <!-- Prism.js for syntax highlighting -->
@@ -896,16 +1035,27 @@ const state = {
   _blobUrl:         null,   // object URL for current viewable file (revoked on nav)
   watchInterval:    null,   // setInterval ID for auto file-tree refresh
   treeCollapsed:    false,  // true when user has collapsed all tree dirs
+  showAllFiles:     false,  // when true, show unsupported/binary files in tree + allow hex view
+  hexMode:          false,  // currently showing hex view
+  hexPage:          0,      // current hex page index
+  hexBuffer:        null,   // ArrayBuffer of the current hex file
+  hexSizeWarned:    new Set(), // paths the user has already click-through'd the size warning for
 };
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
-const btnOpenWelcome   = $('btn-open-welcome');
-const btnChangeFolder  = $('btn-change-folder');
-const btnRefreshTree   = $('btn-refresh-tree');
-const btnCollapseAll   = $('btn-collapse-all');
-const btnNewFile       = $('btn-new-file');
-const sidebarWelcome   = $('sidebar-welcome');
+const btnOpenWelcome      = $('btn-open-welcome');
+const btnChangeFolder     = $('btn-change-folder');
+const btnRefreshTree      = $('btn-refresh-tree');
+const btnCollapseAll      = $('btn-collapse-all');
+const btnNewFile          = $('btn-new-file');
+const btnToggleAllFiles   = $('btn-toggle-all-files');
+const btnToggleLog        = $('btn-toggle-log');
+const activityLog         = $('activity-log');
+const activityLogBody     = $('activity-log-body');
+const activityLogClear    = $('activity-log-clear');
+const contentPane         = $('content-pane');
+const sidebarWelcome      = $('sidebar-welcome');
 const treeFilter       = $('tree-filter');
 const filterHeader     = $('filter-header');
 const filterBody       = $('filter-body');
@@ -1015,6 +1165,31 @@ btnOpenWelcome.addEventListener('click', pickFolder);
 btnChangeFolder.addEventListener('click', pickFolder);
 btnRefreshTree.addEventListener('click', () => refreshTree());
 
+// ── Show all files toggle ─────────────────────────────────────────────────────
+function updateToggleAllFilesBtn() {
+  btnToggleAllFiles.classList.toggle('active', state.showAllFiles);
+  btnToggleAllFiles.querySelector('.tree-btn-label').textContent =
+    state.showAllFiles ? 'Show text files' : 'Show all files';
+}
+
+function toggleShowAllFiles() {
+  state.showAllFiles = !state.showAllFiles;
+  // Apply / remove data-toggle-hidden on every unsupported tree item without full re-render.
+  sidebarTreeWrap.querySelectorAll('.tree-item.tree-file').forEach(item => {
+    const cat = item.dataset.category;
+    if (cat === 'unsupported') {
+      if (state.showAllFiles) {
+        item.removeAttribute('data-toggle-hidden');
+      } else {
+        item.setAttribute('data-toggle-hidden', '');
+      }
+    }
+  });
+  updateToggleAllFilesBtn();
+}
+
+btnToggleAllFiles.addEventListener('click', toggleShowAllFiles);
+
 // ── Collapse / Expand all tree dirs ──────────────────────────────────────────
 function updateCollapseBtn() {
   btnCollapseAll.querySelector('.tree-btn-label').textContent =
@@ -1107,8 +1282,10 @@ async function createNewFile() {
     const newPath = targetDirPath ? `${targetDirPath}/${trimmed}` : trimmed;
     await refreshTree();
     openFile(newPath);
+    logActivity(`Created: ${newPath}`, { type: 'ok', ref: `file:${newPath}` });
     showToast(`Created "${trimmed}".`, { type: 'ok', duration: 3000 });
   } catch (err) {
+    logActivity(`Create failed: ${trimmed} — ${err.message}`, { type: 'error' });
     showToast(`Could not create file: ${err.message}`, { type: 'error', duration: 8000 });
   }
 }
@@ -1214,7 +1391,12 @@ async function loadFolder(handle) {
   filterTree('');
   state.treeCollapsed = false;
   updateCollapseBtn();
+  state.showAllFiles = false;
+  updateToggleAllFilesBtn();
+  state.hexMode = false;
   startWatching();
+
+  logActivity(`Opened folder: ${handle.name}`, { type: 'ok' });
 
   // Priority: README.md → index.html → first file → folder view
   const readme  = findFile('README.md') || findFile('readme.md');
@@ -1300,6 +1482,7 @@ async function refreshTree() {
 
 function showDeletedFileBanner(path) {
   const filename = path.split('/').pop();
+  logActivity(`File deleted/moved: ${path}`, { type: 'warn' });
   readerInner.className = '';
   readerInner.innerHTML = `
     <div class="notice-pane">
@@ -1344,6 +1527,7 @@ async function startWatching() {
 
       if (changed) {
         knownPaths = currentFiles;
+        logActivity('File tree changed — refreshed.', { type: '' });
         await refreshTree();
       }
     } catch (e) {
@@ -1444,6 +1628,7 @@ async function moveEntry(srcPath, destDirPath, kind) {
     }
 
     const newPath = destDirPath ? `${destDirPath}/${name}` : name;
+    logActivity(`Moved: ${srcPath} → ${newPath}`, { type: 'ok', ref: `file:${newPath}` });
     showToast(`Moved "${name}" to "${destLabel}".`, { type: 'ok', duration: 3000 });
 
     // Refresh tree; if the moved file was open, re-open it at its new location.
@@ -1462,6 +1647,7 @@ async function moveEntry(srcPath, destDirPath, kind) {
     }
   } catch (err) {
     console.error('Move failed:', err);
+    logActivity(`Move failed: ${srcPath} — ${err.message}`, { type: 'error' });
     showToast(`Move failed: ${err.message}`, { type: 'error', duration: 8000 });
   }
 }
@@ -1480,6 +1666,77 @@ function showToast(msg, { type = '', duration = 5000 } = {}) {
     _toastTimer = setTimeout(() => toast.classList.remove('visible'), duration);
   }
 }
+
+// ── Activity Log ──────────────────────────────────────────────────────────────
+
+// Resolve a ref string (e.g. "file:foo/bar.md", "dir:foo") to a sidebar DOM element.
+function resolveLogRef(ref) {
+  if (!ref) return null;
+  if (ref.startsWith('file:')) {
+    const p = ref.slice(5);
+    return sidebarTreeWrap.querySelector(`.tree-file[data-path="${CSS.escape(p)}"]`);
+  }
+  if (ref.startsWith('dir:')) {
+    const p = ref.slice(4);
+    return sidebarTreeWrap.querySelector(`.tree-dir[data-path="${CSS.escape(p)}"]`);
+  }
+  return null;
+}
+
+function highlightLogRef(ref) {
+  const elem = resolveLogRef(ref);
+  if (!elem) return;
+  // Expand ancestors so the element is visible
+  if (ref.startsWith('file:')) revealInTree(ref.slice(5));
+  // Remove any existing animation, re-apply to retrigger
+  elem.classList.remove('log-highlight');
+  void elem.offsetWidth; // reflow to reset animation
+  elem.classList.add('log-highlight');
+  elem.addEventListener('animationend', () => elem.classList.remove('log-highlight'), { once: true });
+}
+
+// logActivity(msg, { type: 'error'|'warn'|'ok'|'', ref: 'file:path'|'dir:path'|null })
+function logActivity(msg, { type = '', ref = null } = {}) {
+  // Remove the "no activity" placeholder if present
+  const empty = activityLogBody.querySelector('.log-empty');
+  if (empty) empty.remove();
+
+  const now  = new Date();
+  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  const entry = document.createElement('div');
+  entry.className = 'log-entry' + (type ? ` log-${type}` : '') + (ref ? ' log-clickable' : '');
+
+  const timeEl = document.createElement('span');
+  timeEl.className = 'log-entry-time';
+  timeEl.textContent = time;
+
+  const msgEl = document.createElement('span');
+  msgEl.className = 'log-entry-msg';
+  msgEl.textContent = msg;
+
+  entry.appendChild(timeEl);
+  entry.appendChild(msgEl);
+
+  if (ref) {
+    entry.title = 'Click to highlight in sidebar';
+    entry.addEventListener('click', () => highlightLogRef(ref));
+  }
+
+  // Newest at top
+  activityLogBody.prepend(entry);
+}
+
+function toggleActivityLog() {
+  const isOpen = activityLog.classList.toggle('visible');
+  btnToggleLog.classList.toggle('active', isOpen);
+  contentPane.classList.toggle('log-open', isOpen);
+}
+
+btnToggleLog.addEventListener('click', toggleActivityLog);
+activityLogClear.addEventListener('click', () => {
+  activityLogBody.innerHTML = '<div class="log-empty">No activity yet.</div>';
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function findFile(name) {
@@ -1668,6 +1925,167 @@ async function enrichFileCard(file, ft, badgeRow, snippet) {
   } catch { /* leave empty */ }
 }
 
+// ── Hex viewer ────────────────────────────────────────────────────────────────
+const HEX_BYTES_PER_ROW  = 16;
+const HEX_ROWS_PER_PAGE  = 4096;
+const HEX_BYTES_PER_PAGE = HEX_BYTES_PER_ROW * HEX_ROWS_PER_PAGE; // 65536
+
+function formatHexPage(buffer, pageIndex) {
+  const start = pageIndex * HEX_BYTES_PER_PAGE;
+  const bytes = new Uint8Array(buffer, start, Math.min(HEX_BYTES_PER_PAGE, buffer.byteLength - start));
+  const lines = [];
+  for (let i = 0; i < bytes.length; i += HEX_BYTES_PER_ROW) {
+    const offset = start + i;
+    const chunk  = bytes.subarray(i, i + HEX_BYTES_PER_ROW);
+    // Hex groups: two sets of 8 bytes
+    let hexStr = '';
+    for (let j = 0; j < HEX_BYTES_PER_ROW; j++) {
+      if (j === 8) hexStr += '  ';
+      else if (j > 0) hexStr += ' ';
+      hexStr += (j < chunk.length) ? chunk[j].toString(16).padStart(2, '0') : '  ';
+    }
+    // ASCII column
+    let asciiStr = '';
+    for (let j = 0; j < chunk.length; j++) {
+      const b = chunk[j];
+      asciiStr += (b >= 0x20 && b < 0x7f) ? String.fromCharCode(b) : '.';
+    }
+    const offsetHex = offset.toString(16).padStart(8, '0');
+    lines.push(`<span class="hex-offset">${offsetHex}</span>  <span class="hex-bytes">${escHtml(hexStr)}</span>  <span class="hex-ascii">${escHtml(asciiStr)}</span>`);
+  }
+  return lines.join('\n');
+}
+
+function buildHexIndex(buffer, totalBytes) {
+  const pageCount = Math.ceil(totalBytes / HEX_BYTES_PER_PAGE);
+  const index = document.createElement('div');
+  index.id = 'hex-index';
+  const heading = document.createElement('div');
+  heading.className = 'hex-index-heading';
+  heading.textContent = `${pageCount} page${pageCount !== 1 ? 's' : ''}`;
+  index.appendChild(heading);
+  for (let i = 0; i < pageCount; i++) {
+    const startOff = i * HEX_BYTES_PER_PAGE;
+    const item = document.createElement('div');
+    item.className = 'hex-index-item' + (i === 0 ? ' active' : '');
+    item.textContent = '0x' + startOff.toString(16).padStart(7, '0');
+    item.dataset.page = i;
+    item.addEventListener('click', () => navigateHexPage(i));
+    index.appendChild(item);
+  }
+  return index;
+}
+
+function navigateHexPage(pageIndex) {
+  if (!state.hexBuffer) return;
+  state.hexPage = pageIndex;
+  // Update index active item
+  const indexEl = document.getElementById('hex-index');
+  if (indexEl) {
+    indexEl.querySelectorAll('.hex-index-item').forEach((item, i) => {
+      item.classList.toggle('active', i === pageIndex);
+    });
+    // Scroll active item into view within the index panel
+    const activeItem = indexEl.querySelector('.hex-index-item.active');
+    if (activeItem) activeItem.scrollIntoView({ block: 'nearest' });
+  }
+  // Re-render hex content
+  const pre = document.getElementById('hex-pre');
+  if (pre) {
+    pre.innerHTML = formatHexPage(state.hexBuffer, pageIndex);
+  }
+  // Scroll hex content to top
+  const content = document.getElementById('hex-content');
+  if (content) content.scrollTop = 0;
+}
+
+async function renderHexView(handle, path, filename) {
+  const HEX_MAX_WARN = 10 * 1024 * 1024; // 10 MB
+
+  // Check file size
+  let fileObj;
+  try {
+    fileObj = await handle.getFile();
+  } catch (err) {
+    readerInner.className = '';
+    readerInner.innerHTML = `<div class="notice-pane">
+      <div class="notice-pane-icon">⚠️</div>
+      <div class="notice-pane-title">Could not read file</div>
+      <div class="notice-pane-sub">${escHtml(filename)}: ${escHtml(err.message)}</div>
+    </div>`;
+    logActivity(`Read error: ${path}`, { type: 'error' });
+    return;
+  }
+
+  const totalBytes = fileObj.size;
+
+  // Size warning (only once per path)
+  if (totalBytes > HEX_MAX_WARN && !state.hexSizeWarned.has(path)) {
+    readerInner.className = '';
+    const sizeMb = (totalBytes / 1024 / 1024).toFixed(1);
+    readerInner.innerHTML = `<div class="notice-pane">
+      <div class="notice-pane-icon">⚠️</div>
+      <div class="notice-pane-title">Large file</div>
+      <div class="notice-pane-sub">
+        <strong>${escHtml(filename)}</strong> is ${sizeMb} MB.<br>
+        Loading a large binary file may be slow. It is recommended to open this file in a dedicated hex editor.
+      </div>
+      <button class="notice-pane-btn" id="hex-load-anyway">Load anyway</button>
+    </div>`;
+    document.getElementById('hex-load-anyway').addEventListener('click', () => {
+      state.hexSizeWarned.add(path);
+      renderHexView(handle, path, filename);
+    });
+    return;
+  }
+
+  // Read bytes
+  let buffer;
+  try {
+    buffer = await fileObj.arrayBuffer();
+  } catch (err) {
+    readerInner.className = '';
+    readerInner.innerHTML = `<div class="notice-pane">
+      <div class="notice-pane-icon">⚠️</div>
+      <div class="notice-pane-title">Could not read file</div>
+      <div class="notice-pane-sub">${escHtml(filename)}: ${escHtml(err.message)}</div>
+    </div>`;
+    logActivity(`Read error: ${path}`, { type: 'error' });
+    return;
+  }
+
+  state.hexBuffer = buffer;
+  state.hexPage   = 0;
+  state.hexMode   = true;
+
+  // Build hex view layout: index (left) + content (right)
+  readerInner.className = 'hex-mode';
+  readerInner.innerHTML = '';
+
+  // Left: page index
+  const indexEl = buildHexIndex(buffer, totalBytes);
+  readerInner.appendChild(indexEl);
+
+  // Right: hex content area
+  const contentEl = document.createElement('div');
+  contentEl.id = 'hex-content';
+
+  const pre = document.createElement('pre');
+  pre.id = 'hex-pre';
+  pre.innerHTML = formatHexPage(buffer, 0);
+  contentEl.appendChild(pre);
+
+  // Footer: size info
+  const footer = document.createElement('div');
+  footer.id = 'hex-footer';
+  const pageCount = Math.ceil(totalBytes / HEX_BYTES_PER_PAGE);
+  footer.textContent = `${totalBytes.toLocaleString()} bytes total · ${pageCount} page${pageCount !== 1 ? 's' : ''} · ${HEX_ROWS_PER_PAGE} rows/page`;
+  contentEl.appendChild(footer);
+
+  readerInner.appendChild(contentEl);
+  syncToolbar();
+}
+
 // ── Open file ─────────────────────────────────────────────────────────────────
 async function openFile(path) {
   if (state.dirty && path !== state.currentPath) {
@@ -1675,6 +2093,10 @@ async function openFile(path) {
     markCleanSilent();
   }
   if (state.editMode) leaveEditMode();
+
+  // Clear hex state when navigating to a new file
+  state.hexMode   = false;
+  state.hexBuffer = null;
 
   state.currentPath    = path;
   state.currentDirPath = null;
@@ -1699,19 +2121,28 @@ async function openFile(path) {
     state.currentRawText = '';
     metaStrip.classList.remove('visible');
     metaStrip.innerHTML = '';
-    readerInner.className = '';
-    readerInner.innerHTML = `
-      <div class="notice-pane">
-        <div class="notice-pane-icon">🚫</div>
-        <div class="notice-pane-title">Cannot display this file</div>
-        <div class="notice-pane-sub">
-          <strong>${escHtml(filename)}</strong><br>
-          The <code>.${escHtml(ft.label.toLowerCase())}</code> format is not supported for viewing.
-          You can still open and edit this file in an external application.
-        </div>
-      </div>`;
-    syncToolbar();
-    renderBreadcrumbForFile(path);
+
+    if (state.showAllFiles) {
+      // Hex viewer mode
+      renderBreadcrumbForFile(path);
+      const handle = state.files.get(path);
+      await renderHexView(handle, path, filename);
+      logActivity(`Opened (hex): ${path}`, { type: '', ref: `file:${path}` });
+    } else {
+      readerInner.className = '';
+      readerInner.innerHTML = `
+        <div class="notice-pane">
+          <div class="notice-pane-icon">🚫</div>
+          <div class="notice-pane-title">Cannot display this file</div>
+          <div class="notice-pane-sub">
+            <strong>${escHtml(filename)}</strong><br>
+            The <code>${escHtml(ft.label)}</code> format is not supported for viewing.
+            Enable "Show all files" in the sidebar to view a hex dump, or open this file in an external application.
+          </div>
+        </div>`;
+      syncToolbar();
+      renderBreadcrumbForFile(path);
+    }
     return;
   }
 
@@ -1749,12 +2180,14 @@ async function openFile(path) {
         elem.title = filename;
       }
       if (elem) viewerArea.appendChild(elem);
+      logActivity(`Opened: ${path}`, { ref: `file:${path}` });
     } catch {
       viewerArea.innerHTML = `<div class="notice-pane">
         <div class="notice-pane-icon">⚠️</div>
         <div class="notice-pane-title">Could not load file</div>
         <div class="notice-pane-sub">${escHtml(filename)}</div>
       </div>`;
+      logActivity(`Error reading: ${path}`, { type: 'error' });
     }
     syncToolbar();
     renderBreadcrumbForFile(path);
@@ -1769,6 +2202,7 @@ async function openFile(path) {
     text = await (await handle.getFile()).text();
   } catch {
     readerInner.innerHTML = `<div class="state-msg">Could not read: ${escHtml(path)}</div>`;
+    logActivity(`Error reading: ${path}`, { type: 'error' });
     showFileUI();
     renderBreadcrumbForFile(path);
     return;
@@ -1786,6 +2220,7 @@ async function openFile(path) {
     renderForType(text, ft, readerInner);
   }
 
+  logActivity(`Opened: ${path}`, { ref: `file:${path}` });
   showFileUI();
   reader.scrollTop = 0;
   renderBreadcrumbForFile(path);
@@ -1946,12 +2381,28 @@ function syncToolbar() {
   // File type badge
   const ft = state.currentFileType;
   if (ft) {
-    ftBadge.textContent  = ft.label;
-    ftBadge.className    = ft.badgeClass;
+    ftBadge.textContent   = ft.label;
+    ftBadge.className     = ft.badgeClass;
     ftBadge.style.display = '';
   } else {
     ftBadge.style.display = 'none';
   }
+
+  // In hex-viewer mode: hide toggles and Edit/Save — only Reveal is useful
+  if (state.hexMode) {
+    btnWrap.style.display       = 'none';
+    btnSplit.style.display      = 'none';
+    btnResetSplit.style.display = 'none';
+    btnReveal.style.display     = state.currentPath ? '' : 'none';
+    btnRefresh.style.display    = 'none';
+    btnEdit.style.display       = 'none';
+    btnCancel.style.display     = 'none';
+    btnSave.style.display       = 'none';
+    return;
+  }
+
+  btnWrap.style.display  = '';
+  btnEdit.style.display  = '';
 
   // Split button — hide when viewing HTML (iframe sync not meaningful)
   const isHtml = ft && ft.category === 'html';
@@ -1961,7 +2412,7 @@ function syncToolbar() {
   btnResetSplit.style.display = showReset ? '' : 'none';
   if (showReset) btnResetSplit.classList.toggle('at-center', Math.abs(state.splitRatio - 0.5) < 0.01);
 
-  const cat = state.currentFileType && state.currentFileType.category;
+  const cat     = state.currentFileType && state.currentFileType.category;
   const canEdit = cat && cat !== 'viewable' && cat !== 'unsupported';
 
   if (state.editMode) {
@@ -2080,6 +2531,7 @@ function leaveEditMode() {
 }
 
 function showPermDenied() {
+  logActivity('Write permission denied.', { type: 'warn' });
   permMsg.classList.add('visible');
   btnEdit.style.display = 'none';
   setTimeout(() => { permMsg.classList.remove('visible'); btnEdit.style.display = ''; }, 4000);
@@ -2139,9 +2591,11 @@ async function saveFile() {
     await writable.write(editor.value);
     await writable.close();
     state.currentRawText = editor.value;
+    logActivity(`Saved: ${state.currentPath}`, { type: 'ok', ref: `file:${state.currentPath}` });
     markClean();
   } catch (e) {
     console.error('Save failed:', e);
+    logActivity(`Save failed: ${state.currentPath} — ${e.message}`, { type: 'error' });
     btnSave.classList.remove('saving');
     btnSave.textContent = '⚠ Save failed';
     setTimeout(() => { if (state.dirty) btnSave.textContent = '● Save'; }, 3000);
@@ -2481,6 +2935,10 @@ function makeFileItem(file, depth) {
   // Apply initial filter state
   if (!state.visibleCategories.has(ft.category)) {
     row.setAttribute('data-cat-hidden', '');
+  }
+  // Apply show-all-files toggle: hide unsupported files when toggle is off
+  if (ft.category === 'unsupported' && !state.showAllFiles) {
+    row.setAttribute('data-toggle-hidden', '');
   }
 
   const spacer = document.createElement('span');
