@@ -150,6 +150,11 @@
     flex-shrink: 0; margin-right: 6px; display: none;
   }
   .tree-item.has-unsaved .tree-dirty-dot { display: block; }
+  .tree-item.drop-target {
+    background: var(--bg-active) !important;
+    outline: 1px solid var(--accent-blue);
+    outline-offset: -1px;
+  }
 
   /* ── Content pane ─────────────────────────────────────────── */
   #content-pane {
@@ -911,6 +916,9 @@ document.addEventListener('drop', async e => {
   _dragDepth = 0;
   dropOverlay.classList.remove('active');
 
+  // Ignore internal tree drag-and-drop (those items have our custom type set).
+  if (e.dataTransfer.types.includes('text/x-mdweb-src')) return;
+
   const items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
   if (!items.length) return;
 
@@ -965,7 +973,7 @@ async function loadFolder(handle) {
   state.visibleCategories = new Set(['markdown','html','code','text','viewable','unsupported']);
   state.files.clear();
   state.dirs.clear();
-  state.tree = { name: handle.name, children: {}, files: [], path: '' };
+  state.tree = { name: handle.name, children: {}, files: [], path: '', handle: handle };
 
   await walkDir(handle, state.tree, '');
 
@@ -1002,7 +1010,7 @@ async function walkDir(dirHandle, node, prefix) {
     if (entry.name.startsWith('.')) continue;
     const path = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.kind === 'directory') {
-      const child = { name: entry.name, children: {}, files: [], path };
+      const child = { name: entry.name, children: {}, files: [], path, handle: entry };
       node.children[entry.name] = child;
       state.dirs.set(path, child);
       await walkDir(entry, child, path);
@@ -1114,6 +1122,118 @@ async function startWatching() {
       stopWatching();
     }
   }, 10000);
+}
+
+// ── Tree-item move (drag within sidebar) ─────────────────────────────────────
+
+// Resolve a dir node's FileSystemDirectoryHandle from its path string.
+function getDirHandle(dirPath) {
+  if (dirPath === '') return state.tree.handle;       // root
+  const node = state.dirs.get(dirPath);
+  if (!node) throw new Error(`Unknown dir path: "${dirPath}"`);
+  return node.handle;
+}
+
+// Resolve the handle of the parent directory for any entry path.
+function getParentDirHandle(entryPath) {
+  const parentPath = entryPath.includes('/')
+    ? entryPath.split('/').slice(0, -1).join('/')
+    : '';
+  return getDirHandle(parentPath);
+}
+
+// Copy a single file from srcDirHandle to destDirHandle using ArrayBuffer
+// (safe for both text and binary), then delete the original.
+async function moveFile(srcDirHandle, name, destDirHandle, newName) {
+  const srcFileHandle  = await srcDirHandle.getFileHandle(name);
+  const file           = await srcFileHandle.getFile();
+  const buffer         = await file.arrayBuffer();
+  const destFileHandle = await destDirHandle.getFileHandle(newName, { create: true });
+  const writable       = await destFileHandle.createWritable();
+  await writable.write(buffer);
+  await writable.close();
+  await srcDirHandle.removeEntry(name);
+}
+
+// Recursively copy a directory tree then remove the original.
+async function moveDirectory(srcParentHandle, name, destDirHandle, newName) {
+  const srcDir  = await srcParentHandle.getDirectoryHandle(name);
+  const destDir = await destDirHandle.getDirectoryHandle(newName, { create: true });
+  for await (const entry of srcDir.values()) {
+    if (entry.name.startsWith('.')) continue;
+    if (entry.kind === 'file') {
+      await moveFile(srcDir, entry.name, destDir, entry.name);
+    } else {
+      await moveDirectory(srcDir, entry.name, destDir, entry.name);
+    }
+  }
+  await srcParentHandle.removeEntry(name, { recursive: true });
+}
+
+// Orchestrate a move: validate, prompt, acquire write permission, execute.
+async function moveEntry(srcPath, destDirPath, kind) {
+  if (!srcPath) return;
+
+  // Guard: dropping onto itself
+  if (srcPath === destDirPath) return;
+
+  // Guard: can't move a directory into itself or any of its descendants
+  if (kind === 'directory' && destDirPath.startsWith(srcPath + '/')) {
+    showToast('Cannot move a folder into one of its own subfolders.', { type: 'warn' });
+    return;
+  }
+
+  // Guard: already in the destination directory (no-op)
+  const srcParentPath = srcPath.includes('/')
+    ? srcPath.split('/').slice(0, -1).join('/')
+    : '';
+  if (srcParentPath === destDirPath) {
+    showToast('Already in that folder.', { type: 'warn', duration: 3000 });
+    return;
+  }
+
+  const name      = srcPath.split('/').pop();
+  const destLabel = destDirPath === '' ? state.rootName : destDirPath.split('/').pop();
+  if (!confirm(`Move "${name}" into "${destLabel}"?`)) return;
+
+  // Ensure write permission
+  if (!state.writePermission) {
+    const perm = await state.rootHandle.requestPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') { showPermDenied(); return; }
+    state.writePermission = true;
+  }
+
+  try {
+    const srcParentHandle = getParentDirHandle(srcPath);
+    const destDirHandle   = getDirHandle(destDirPath);
+
+    if (kind === 'file') {
+      await moveFile(srcParentHandle, name, destDirHandle, name);
+    } else {
+      await moveDirectory(srcParentHandle, name, destDirHandle, name);
+    }
+
+    const newPath = destDirPath ? `${destDirPath}/${name}` : name;
+    showToast(`Moved "${name}" to "${destLabel}".`, { type: 'ok', duration: 3000 });
+
+    // Refresh tree; if the moved file was open, re-open it at its new location.
+    if (kind === 'file' && state.currentPath === srcPath) {
+      state.currentPath = null;
+      await refreshTree();
+      openFile(newPath);
+    } else if (kind === 'directory' && state.currentPath && state.currentPath.startsWith(srcPath + '/')) {
+      // Active file was inside the moved directory; update its path.
+      const relativePath = state.currentPath.slice(srcPath.length);
+      state.currentPath = null;
+      await refreshTree();
+      openFile(newPath + relativePath);
+    } else {
+      await refreshTree();
+    }
+  } catch (err) {
+    console.error('Move failed:', err);
+    showToast(`Move failed: ${err.message}`, { type: 'error', duration: 8000 });
+  }
 }
 
 // ── Toast notification ────────────────────────────────────────────────────────
@@ -2056,6 +2176,7 @@ function makeDirItem(dir, depth, defaultOpen) {
   const wrap = document.createElement('div');
   const row  = document.createElement('div');
   row.className = 'tree-item tree-dir';
+  row.dataset.path = dir.path;
   row.style.paddingLeft = `${depth * 16 + 4}px`;
 
   const chevron = document.createElement('span');
@@ -2084,6 +2205,36 @@ function makeDirItem(dir, depth, defaultOpen) {
     chevron.classList.toggle('open', open);
     openDir(dir.path);
   });
+
+  // ── Drag: this dir can be dragged to move it ────────────────
+  row.draggable = true;
+  row.addEventListener('dragstart', e => {
+    e.stopPropagation();
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/x-mdweb-src', dir.path);
+    e.dataTransfer.setData('text/x-mdweb-kind', 'directory');
+    row.style.opacity = '0.5';
+  });
+  row.addEventListener('dragend', () => { row.style.opacity = ''; });
+
+  // ── Drop: dirs accept drops of other files/dirs ─────────────
+  row.addEventListener('dragover', e => {
+    if (!e.dataTransfer.types.includes('text/x-mdweb-src')) return;
+    e.preventDefault(); e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    row.classList.add('drop-target');
+  });
+  row.addEventListener('dragleave', e => {
+    if (!row.contains(e.relatedTarget)) row.classList.remove('drop-target');
+  });
+  row.addEventListener('drop', async e => {
+    e.preventDefault(); e.stopPropagation();
+    row.classList.remove('drop-target');
+    const srcPath = e.dataTransfer.getData('text/x-mdweb-src');
+    const kind    = e.dataTransfer.getData('text/x-mdweb-kind');
+    if (srcPath) await moveEntry(srcPath, dir.path, kind);
+  });
+
   return wrap;
 }
 
@@ -2121,6 +2272,41 @@ function makeFileItem(file, depth) {
 
   row.appendChild(spacer); row.appendChild(dot); row.appendChild(dirtyDot); row.appendChild(label);
   row.addEventListener('click', () => openFile(file.path));
+
+  // ── Drag: files can be dragged to move them ─────────────────
+  row.draggable = true;
+  row.addEventListener('dragstart', e => {
+    e.stopPropagation();
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/x-mdweb-src', file.path);
+    e.dataTransfer.setData('text/x-mdweb-kind', 'file');
+    row.style.opacity = '0.5';
+  });
+  row.addEventListener('dragend', () => { row.style.opacity = ''; });
+
+  // ── Drop: dropping onto a file moves to its parent dir ──────
+  row.addEventListener('dragover', e => {
+    if (!e.dataTransfer.types.includes('text/x-mdweb-src')) return;
+    e.preventDefault(); e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    row.classList.add('drop-target');
+  });
+  row.addEventListener('dragleave', e => {
+    if (!row.contains(e.relatedTarget)) row.classList.remove('drop-target');
+  });
+  row.addEventListener('drop', async e => {
+    e.preventDefault(); e.stopPropagation();
+    row.classList.remove('drop-target');
+    const srcPath = e.dataTransfer.getData('text/x-mdweb-src');
+    const kind    = e.dataTransfer.getData('text/x-mdweb-kind');
+    if (!srcPath) return;
+    // Target = parent directory of this file
+    const destDirPath = file.path.includes('/')
+      ? file.path.split('/').slice(0, -1).join('/')
+      : '';
+    await moveEntry(srcPath, destDirPath, kind);
+  });
+
   return row;
 }
 
