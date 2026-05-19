@@ -81,13 +81,22 @@
     display: flex; align-items: center; gap: 8px;
     font-size: 13px; font-weight: 600; color: var(--text-heading); letter-spacing: 0.01em;
   }
-  #header-folder-name {
+  #header-path-chips {
+    display: flex; align-items: center; gap: 2px; flex: 1;
+    overflow: hidden; min-width: 0; flex-shrink: 1;
+  }
+  .path-chip {
     font-size: 12px; color: var(--text-muted); background: var(--bg-hover);
     border: 1px solid var(--border); border-radius: var(--radius); padding: 2px 8px;
-    font-family: var(--font-mono); max-width: 300px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: none;
+    font-family: var(--font-mono); cursor: pointer; white-space: nowrap;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+    flex-shrink: 0;
   }
-  #header-folder-name.visible { display: block; }
+  .path-chip:hover { color: var(--text); background: var(--bg-active); border-color: var(--accent-blue); }
+  .path-chip.active { color: var(--text-heading); }
+  .path-chip-sep {
+    color: var(--text-dim); font-size: 11px; flex-shrink: 0; user-select: none;
+  }
 
   /* ── Sidebar ─────────────────────────────────────────────── */
   #sidebar {
@@ -760,7 +769,7 @@
       </svg>
       mdweb
     </div>
-    <span id="header-folder-name"></span>
+    <div id="header-path-chips"></div>
     <button id="btn-toggle-log" title="Toggle activity log">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3a2 2 0 0 0-2 2v.5H2a1 1 0 0 0-1 1V13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-1V5a2 2 0 0 0-2-2H5zm7 2.5V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v.5h8zM2 7.5h12V13H2V7.5zm2 2a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5z"/></svg>
       Log
@@ -1119,7 +1128,7 @@ const treeSearchClear  = $('tree-search-clear');
 const treeSearchEmpty  = $('tree-search-empty');
 const sidebarTreeWrap  = $('sidebar-tree-wrap');
 const sidebarBottom    = $('sidebar-bottom');
-const headerFolderName = $('header-folder-name');
+const headerPathChips  = $('header-path-chips');
 const welcomeContent   = $('welcome-content');
 const breadcrumb       = $('breadcrumb');
 const contentToolbar   = $('content-toolbar');
@@ -1149,6 +1158,61 @@ const btnSave          = $('btn-save');
 const permMsg          = $('perm-msg');
 const dropOverlay      = $('drop-overlay');
 const activityLogSave  = $('activity-log-save');
+
+// ── Header path chips ────────────────────────────────────────────────────────
+// Renders the root folder + current path segments as clickable chips in the header.
+// path: slash-separated relative path string ('' for root, 'docs' or 'docs/api' for subdirs)
+// If path is null, clears the chips (initial state before folder load).
+function renderHeaderPath(path) {
+  headerPathChips.innerHTML = '';
+  if (!state.rootName) return;
+
+  // Build segment list: root chip + each subfolder along the path
+  const segments = [{ label: state.rootName, dirPath: '' }];
+  if (path && path !== '') {
+    const parts = path.split('/');
+    parts.forEach((part, i) => {
+      segments.push({ label: part, dirPath: parts.slice(0, i + 1).join('/') });
+    });
+  }
+
+  segments.forEach((seg, i) => {
+    if (i > 0) {
+      const sep = document.createElement('span');
+      sep.className = 'path-chip-sep';
+      sep.textContent = '›';
+      headerPathChips.appendChild(sep);
+    }
+    const chip = document.createElement('span');
+    chip.className = 'path-chip' + (i === segments.length - 1 ? ' active' : '');
+    chip.textContent = seg.label;
+    chip.title = seg.dirPath === '' ? state.rootName : seg.dirPath;
+    chip.addEventListener('click', () => {
+      // Reveal in tree: expand ancestors to this dir
+      if (seg.dirPath !== '') revealDirInTree(seg.dirPath);
+      openDir(seg.dirPath);
+    });
+    headerPathChips.appendChild(chip);
+  });
+}
+
+// Expand all ancestor dirs of a given dirPath in the sidebar tree
+function revealDirInTree(dirPath) {
+  const parts = dirPath.split('/');
+  parts.forEach((_, i) => {
+    const ancestor = parts.slice(0, i + 1).join('/');
+    const dirRow = sidebarTreeWrap.querySelector(`.tree-dir[data-path="${CSS.escape(ancestor)}"]`);
+    if (!dirRow) return;
+    const children = dirRow.parentElement && dirRow.parentElement.querySelector('.tree-children');
+    const chevron  = dirRow.querySelector('.tree-chevron');
+    if (children && !children.classList.contains('open')) {
+      children.classList.add('open');
+      if (chevron) chevron.classList.add('open');
+    }
+  });
+  state.treeCollapsed = false;
+  updateCollapseBtn();
+}
 
 // ── OS folder drag-and-drop ───────────────────────────────────────────────────
 // dragDepth tracks nested dragenter/dragleave events to prevent overlay flicker.
@@ -1443,8 +1507,7 @@ async function loadFolder(handle) {
   sidebarWelcome.style.display  = 'none';
   sidebarTreeWrap.style.display = 'block';
   sidebarBottom.classList.add('visible');
-  headerFolderName.textContent = handle.name;
-  headerFolderName.classList.add('visible');
+  renderHeaderPath('');
   welcomeContent.style.display = 'none';
 
   renderTree(state.tree);
@@ -2575,11 +2638,14 @@ function renderBreadcrumbForFile(filePath) {
       appendCrumb(part, true, () => openDir(dp));
     }
   });
+  // Update header path chips to show the file's parent directory
+  const parentPath = parts.length > 1 ? parts.slice(0, -1).join('/') : '';
+  renderHeaderPath(parentPath);
 }
 
 function renderBreadcrumbForDir(dirPath) {
   breadcrumb.innerHTML = '';
-  if (dirPath === '') { appendCrumb(state.rootName, false, null, true); return; }
+  if (dirPath === '') { appendCrumb(state.rootName, false, null, true); renderHeaderPath(''); return; }
   appendCrumb(state.rootName, true, () => openDir(''));
   const parts = dirPath.split('/');
   parts.forEach((part, i) => {
@@ -2588,6 +2654,8 @@ function renderBreadcrumbForDir(dirPath) {
     if (isLast) appendCrumb(part, false, null, true);
     else { const dp = parts.slice(0, i + 1).join('/'); appendCrumb(part, true, () => openDir(dp)); }
   });
+  // Update header path chips to show the current directory
+  renderHeaderPath(dirPath);
 }
 
 function appendCrumb(text, clickable, handler, isCurrent) {
