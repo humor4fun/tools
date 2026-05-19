@@ -157,6 +157,34 @@
     outline-offset: -1px;
   }
 
+  /* ── Tree search bar ──────────────────────────────────────── */
+  #tree-search {
+    display: none; align-items: center; gap: 6px;
+    padding: 6px 10px 6px 12px; border-bottom: 1px solid var(--border-light); flex-shrink: 0;
+  }
+  #tree-search.visible { display: flex; }
+  #tree-search-icon { color: var(--text-dim); flex-shrink: 0; }
+  #tree-search-input {
+    flex: 1; background: var(--bg-hover); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text); font-size: 12px; padding: 4px 8px;
+    font-family: var(--font-mono); outline: none; min-width: 0;
+  }
+  #tree-search-input:focus { border-color: var(--accent-blue); }
+  #tree-search-input::placeholder { color: var(--text-dim); }
+  #tree-search-clear {
+    background: none; border: none; color: var(--text-dim); cursor: pointer;
+    font-size: 16px; padding: 0 2px; line-height: 1; display: none;
+    transition: color 0.15s;
+  }
+  #tree-search-clear:hover { color: var(--text-muted); }
+  #tree-search-clear.visible { display: block; }
+  .tree-item[data-search-hidden] { display: none !important; }
+  #tree-search-empty {
+    display: none; padding: 12px 16px; font-size: 12px;
+    color: var(--text-dim); text-align: center; font-style: italic;
+  }
+  #tree-search-empty.visible { display: block; }
+
   /* ── Content pane ─────────────────────────────────────────── */
   #content-pane {
     display: flex; flex-direction: column; overflow: hidden;
@@ -601,7 +629,13 @@
       <div id="filter-body"></div>
     </div>
 
+    <div id="tree-search">
+      <svg id="tree-search-icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.099zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg>
+      <input id="tree-search-input" type="text" placeholder="Find file…" autocomplete="off" spellcheck="false">
+      <button id="tree-search-clear" title="Clear search">×</button>
+    </div>
     <div id="sidebar-tree-wrap" style="display:none"></div>
+    <div id="tree-search-empty">No files match</div>
     <div id="sidebar-bottom">
       <button id="btn-refresh-tree" title="Refresh file tree">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
@@ -877,6 +911,10 @@ const filterHeader     = $('filter-header');
 const filterBody       = $('filter-body');
 const filterChevron    = $('filter-chevron');
 const filterActiveCount= $('filter-active-count');
+const treeSearch       = $('tree-search');
+const treeSearchInput  = $('tree-search-input');
+const treeSearchClear  = $('tree-search-clear');
+const treeSearchEmpty  = $('tree-search-empty');
 const sidebarTreeWrap  = $('sidebar-tree-wrap');
 const sidebarBottom    = $('sidebar-bottom');
 const headerFolderName = $('header-folder-name');
@@ -1077,6 +1115,73 @@ async function createNewFile() {
 
 btnNewFile.addEventListener('click', createNewFile);
 
+// ── Tree search / find file ───────────────────────────────────────────────────
+function filterTree(query) {
+  const q = query.trim().toLowerCase();
+
+  // Toggle the clear button visibility.
+  treeSearchClear.classList.toggle('visible', q.length > 0);
+
+  if (!q) {
+    // Clear: remove all search-hidden attributes from files and dirs.
+    sidebarTreeWrap.querySelectorAll('[data-search-hidden]')
+      .forEach(el => el.removeAttribute('data-search-hidden'));
+    // Re-collapse any dirs that were force-opened by the search.
+    sidebarTreeWrap.querySelectorAll('.tree-children[data-search-opened]').forEach(c => {
+      c.removeAttribute('data-search-opened');
+      c.classList.remove('open');
+      const row = c.parentElement && c.parentElement.querySelector('.tree-dir');
+      if (row) { const chev = row.querySelector('.tree-chevron'); if (chev) chev.classList.remove('open'); }
+    });
+    treeSearchEmpty.classList.remove('visible');
+    return;
+  }
+
+  // First pass: mark file rows as hidden or visible.
+  sidebarTreeWrap.querySelectorAll('.tree-file').forEach(row => {
+    const path = (row.dataset.path || '').toLowerCase();
+    const matches = path.includes(q);
+    row.toggleAttribute('data-search-hidden', !matches);
+  });
+
+  // Second pass: for each dir, determine whether any descendant file matches.
+  // Process deepest dirs first by reversing the NodeList.
+  const dirWraps = [...sidebarTreeWrap.querySelectorAll('.tree-dir')].reverse();
+  dirWraps.forEach(row => {
+    const wrap     = row.parentElement;
+    const children = wrap && wrap.querySelector('.tree-children');
+    if (!children) return;
+
+    // A dir is visible if it has at least one visible file or visible sub-dir descendant.
+    const hasVisibleFile = children.querySelector('.tree-file:not([data-search-hidden])');
+    const hasVisibleDir  = children.querySelector('.tree-dir:not([data-search-hidden])');
+    const hasMatch = hasVisibleFile || hasVisibleDir;
+
+    row.toggleAttribute('data-search-hidden', !hasMatch);
+
+    if (hasMatch && !children.classList.contains('open')) {
+      children.classList.add('open');
+      children.setAttribute('data-search-opened', '');
+      const chev = row.querySelector('.tree-chevron');
+      if (chev) chev.classList.add('open');
+    }
+  });
+
+  // Show empty state if nothing at all matched.
+  const anyVisible = sidebarTreeWrap.querySelector('.tree-file:not([data-search-hidden])');
+  treeSearchEmpty.classList.toggle('visible', !anyVisible);
+}
+
+treeSearchInput.addEventListener('input', e => filterTree(e.target.value));
+treeSearchInput.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { treeSearchInput.value = ''; filterTree(''); treeSearchInput.blur(); }
+});
+treeSearchClear.addEventListener('click', () => {
+  treeSearchInput.value = '';
+  filterTree('');
+  treeSearchInput.focus();
+});
+
 // ── Load folder ───────────────────────────────────────────────────────────────
 async function loadFolder(handle) {
   stopWatching();
@@ -1104,6 +1209,9 @@ async function loadFolder(handle) {
   renderTree(state.tree);
   buildFilterBar();
   treeFilter.classList.add('visible');
+  treeSearch.classList.add('visible');
+  treeSearchInput.value = '';
+  filterTree('');
   state.treeCollapsed = false;
   updateCollapseBtn();
   startWatching();
@@ -1164,12 +1272,15 @@ async function refreshTree() {
   // Rebuild internal state from disk.
   state.files.clear();
   state.dirs.clear();
-  state.tree = { name: state.rootName, children: {}, files: [], path: '' };
+  state.tree = { name: state.rootName, children: {}, files: [], path: '', handle: state.rootHandle };
   await walkDir(state.rootHandle, state.tree, '');
 
   // Repaint the sidebar.
   renderTree(state.tree);
   buildFilterBar();
+
+  // Re-apply any active search query so filter state survives the re-render.
+  if (treeSearchInput.value) filterTree(treeSearchInput.value);
 
   // Restore active selection highlight without reloading content.
   if (state.currentPath) {
