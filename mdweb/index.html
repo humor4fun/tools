@@ -723,6 +723,15 @@
   }
   .log-highlight { animation: log-blink 1.2s ease 1; border-radius: 4px; }
 
+  @keyframes tree-blink {
+    0%   { background: var(--bg-active); }
+    30%  { background: var(--accent-blue); }
+    55%  { background: var(--bg-active); }
+    80%  { background: var(--accent-blue); }
+    100% { background: var(--bg-active); }
+  }
+  .tree-item.tree-blink { animation: tree-blink 0.9s ease 1; }
+
   /* ── Header log toggle button ──────────────────────────────── */
   #btn-toggle-log {
     display: flex; align-items: center; gap: 5px; background: transparent; border: none;
@@ -845,10 +854,6 @@
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
         50/50
       </button>
-      <button class="tb-btn" id="btn-reveal" title="Reveal current file in sidebar" style="display:none">
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5M.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5"/><path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm8-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/></svg>
-        Reveal
-      </button>
       <button class="tb-toggle" id="btn-hex" title="Toggle hex viewer" style="display:none">
         <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-1 0v-9A.5.5 0 0 1 5 3m3 0a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-1 0v-9A.5.5 0 0 1 8 3m3 .5v9a.5.5 0 0 1-1 0v-9a.5.5 0 0 1 1 0M1 7.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1H1.5a.5.5 0 0 1-.5-.5"/></svg>
         Hex
@@ -858,6 +863,10 @@
         Beautify
       </button>
       <div class="tb-sep"></div>
+      <button class="tb-btn" id="btn-reveal" title="Reveal current file in sidebar" style="display:none">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5M.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5"/><path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm8-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/></svg>
+        Reveal
+      </button>
       <button class="tb-btn" id="btn-refresh" title="Reload file from disk">
         <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
         Reload
@@ -1280,9 +1289,16 @@ function revealInTree(path) {
   // If tree was marked collapsed, it's now at least partially open.
   state.treeCollapsed = false;
   updateCollapseBtn();
-  // Scroll the file row into view.
+  // Scroll the file row into view and blink it.
   const fileRow = sidebarTreeWrap.querySelector(`.tree-file[data-path="${CSS.escape(path)}"]`);
-  if (fileRow) fileRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  if (fileRow) {
+    fileRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    // Blink: remove class first to allow re-triggering if clicked again quickly
+    fileRow.classList.remove('tree-blink');
+    void fileRow.offsetWidth; // force reflow
+    fileRow.classList.add('tree-blink');
+    fileRow.addEventListener('animationend', () => fileRow.classList.remove('tree-blink'), { once: true });
+  }
 }
 
 btnReveal.addEventListener('click', () => revealInTree(state.currentPath));
