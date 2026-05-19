@@ -116,12 +116,13 @@
 
   #sidebar-bottom { border-top: 1px solid var(--border-light); padding: 8px 10px; flex-shrink: 0; display: none; }
   #sidebar-bottom.visible { display: flex; flex-direction: column; gap: 2px; }
-  #btn-change-folder, #btn-refresh-tree {
+  #btn-change-folder, #btn-refresh-tree, #btn-collapse-all, #btn-new-file {
     display: flex; align-items: center; gap: 6px; background: transparent; border: none;
     color: var(--text-dim); font-size: 11px; cursor: pointer; padding: 4px 6px;
     border-radius: 4px; width: 100%; transition: color 0.15s, background 0.15s;
   }
-  #btn-change-folder:hover, #btn-refresh-tree:hover { color: var(--text-muted); background: var(--bg-hover); }
+  #btn-change-folder:hover, #btn-refresh-tree:hover,
+  #btn-collapse-all:hover, #btn-new-file:hover { color: var(--text-muted); background: var(--bg-hover); }
 
   /* ── Tree ─────────────────────────────────────────────────── */
   .tree-item {
@@ -606,6 +607,10 @@
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
         Refresh tree
       </button>
+      <button id="btn-collapse-all" title="Collapse all folders">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1 4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h7a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1zm0 5a1 1 0 0 1 1-1h7a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1zm-5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1z"/></svg>
+        <span class="tree-btn-label">Collapse all</span>
+      </button>
       <button id="btn-change-folder">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.764c.958 0 1.76.56 2.311 1.184C8.17 3.71 8.692 4 9.5 4H13.5A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5z"/></svg>
         Change folder
@@ -848,6 +853,7 @@ const state = {
   visibleCategories: new Set(['markdown','html','code','text','viewable','unsupported']),
   _blobUrl:         null,   // object URL for current viewable file (revoked on nav)
   watchInterval:    null,   // setInterval ID for auto file-tree refresh
+  treeCollapsed:    false,  // true when user has collapsed all tree dirs
 };
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
@@ -855,6 +861,7 @@ const $ = id => document.getElementById(id);
 const btnOpenWelcome   = $('btn-open-welcome');
 const btnChangeFolder  = $('btn-change-folder');
 const btnRefreshTree   = $('btn-refresh-tree');
+const btnCollapseAll   = $('btn-collapse-all');
 const sidebarWelcome   = $('sidebar-welcome');
 const treeFilter       = $('tree-filter');
 const filterHeader     = $('filter-header');
@@ -960,6 +967,30 @@ btnOpenWelcome.addEventListener('click', pickFolder);
 btnChangeFolder.addEventListener('click', pickFolder);
 btnRefreshTree.addEventListener('click', () => refreshTree());
 
+// ── Collapse / Expand all tree dirs ──────────────────────────────────────────
+function updateCollapseBtn() {
+  btnCollapseAll.querySelector('.tree-btn-label').textContent =
+    state.treeCollapsed ? 'Expand all' : 'Collapse all';
+}
+
+function collapseAll() {
+  sidebarTreeWrap.querySelectorAll('.tree-children').forEach(c => c.classList.remove('open'));
+  sidebarTreeWrap.querySelectorAll('.tree-chevron').forEach(c => c.classList.remove('open'));
+  state.treeCollapsed = true;
+  updateCollapseBtn();
+}
+
+function expandAll() {
+  sidebarTreeWrap.querySelectorAll('.tree-children').forEach(c => c.classList.add('open'));
+  sidebarTreeWrap.querySelectorAll('.tree-chevron').forEach(c => c.classList.add('open'));
+  state.treeCollapsed = false;
+  updateCollapseBtn();
+}
+
+btnCollapseAll.addEventListener('click', () =>
+  state.treeCollapsed ? expandAll() : collapseAll()
+);
+
 // ── Load folder ───────────────────────────────────────────────────────────────
 async function loadFolder(handle) {
   stopWatching();
@@ -987,6 +1018,8 @@ async function loadFolder(handle) {
   renderTree(state.tree);
   buildFilterBar();
   treeFilter.classList.add('visible');
+  state.treeCollapsed = false;
+  updateCollapseBtn();
   startWatching();
 
   // Priority: README.md → index.html → first file → folder view
