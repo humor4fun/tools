@@ -556,13 +556,28 @@
   .filter-label { font-size: 11.5px; color: var(--text-muted); flex: 1; }
   .filter-count { font-size: 10px; color: var(--text-dim); font-family: var(--font-mono); }
 
-  /* per-category check colours */
-  .filter-check.cat-markdown.checked  { background: var(--ft-md); }
-  .filter-check.cat-html.checked      { background: var(--ft-html); }
-  .filter-check.cat-code.checked      { background: var(--ft-code); }
-  .filter-check.cat-text.checked      { background: var(--ft-text); }
-  .filter-check.cat-viewable.checked  { background: #0891b2; }
-  .filter-check.cat-unsupported.checked { background: #374151; }
+  /* generic checked colour — used for all group + subtype checks */
+  .filter-check.checked { background: var(--accent-blue); border-color: transparent; }
+  .filter-check.indeterminate { background: #1f3a5f; border-color: var(--accent-blue); }
+  .filter-check.indeterminate::after {
+    content: ''; display: block; width: 6px; height: 1.5px;
+    background: var(--accent-blue-h); border-radius: 1px; margin: auto;
+  }
+  .filter-check.indeterminate svg { display: none; }
+
+  /* filter group header */
+  .filter-group-header { padding: 4px 4px 4px 4px; }
+  .filter-group-label  { font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
+  .filter-group-chevron {
+    flex-shrink: 0; color: var(--text-dim); transition: transform 0.15s;
+  }
+  .filter-group-chevron.open { transform: rotate(180deg); }
+
+  /* filter sub-row body — collapsed by default */
+  .filter-sub-body { display: none; padding-left: 12px; }
+  .filter-sub-body.open { display: block; }
+  .filter-sub-row  { padding: 2px 4px; }
+  .filter-sub-label { font-size: 11px; color: var(--text-muted); }
 
   /* tree items hidden by filter */
   .tree-file[data-cat-hidden] { display: none; }
@@ -668,12 +683,13 @@
     font-size: 11px; font-weight: 600; color: var(--text-muted);
     text-transform: uppercase; letter-spacing: 0.06em;
   }
-  #activity-log-clear {
+  #activity-log-clear, #activity-log-save {
     background: none; border: none; color: var(--text-dim); cursor: pointer;
     font-size: 10px; padding: 2px 4px; border-radius: 3px;
     transition: color 0.15s, background 0.15s;
   }
-  #activity-log-clear:hover { color: var(--text-muted); background: var(--bg-hover); }
+  #activity-log-clear:hover, #activity-log-save:hover { color: var(--text-muted); background: var(--bg-hover); }
+  #activity-log-header .log-btns { display: flex; gap: 2px; }
   #activity-log-body {
     flex: 1; overflow-y: auto; padding: 4px 0;
     scrollbar-width: thin; scrollbar-color: var(--border) transparent;
@@ -833,6 +849,14 @@
         <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5M.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5"/><path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm8-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/></svg>
         Reveal
       </button>
+      <button class="tb-toggle" id="btn-hex" title="Toggle hex viewer" style="display:none">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-1 0v-9A.5.5 0 0 1 5 3m3 0a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-1 0v-9A.5.5 0 0 1 8 3m3 .5v9a.5.5 0 0 1-1 0v-9a.5.5 0 0 1 1 0M1 7.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1H1.5a.5.5 0 0 1-.5-.5"/></svg>
+        Hex
+      </button>
+      <button class="tb-toggle" id="btn-beautify" title="Beautify / format code" style="display:none">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 0A1.5 1.5 0 0 0 0 1.5v3A1.5 1.5 0 0 0 1.5 6h3A1.5 1.5 0 0 0 6 4.5v-3A1.5 1.5 0 0 0 4.5 0zm7 0A1.5 1.5 0 0 0 7 1.5v3A1.5 1.5 0 0 0 8.5 6h3A1.5 1.5 0 0 0 13 4.5v-3A1.5 1.5 0 0 0 11.5 0zm-7 7A1.5 1.5 0 0 0 0 8.5v3A1.5 1.5 0 0 0 1.5 13h3A1.5 1.5 0 0 0 6 11.5v-3A1.5 1.5 0 0 0 4.5 7zm7 0A1.5 1.5 0 0 0 7 8.5v3A1.5 1.5 0 0 0 8.5 13h3A1.5 1.5 0 0 0 13 11.5v-3A1.5 1.5 0 0 0 11.5 7z"/></svg>
+        Beautify
+      </button>
       <div class="tb-sep"></div>
       <button class="tb-btn" id="btn-refresh" title="Reload file from disk">
         <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
@@ -872,7 +896,10 @@
 <div id="activity-log">
   <div id="activity-log-header">
     <span id="activity-log-title">Activity Log</span>
-    <button id="activity-log-clear" title="Clear log">Clear</button>
+    <div class="log-btns">
+      <button id="activity-log-save" title="Save log to file">Save</button>
+      <button id="activity-log-clear" title="Clear log">Clear</button>
+    </div>
   </div>
   <div id="activity-log-body">
     <div class="log-empty">No activity yet.</div>
@@ -890,98 +917,101 @@
 
 // ── File type detection ───────────────────────────────────────────────────────
 // Returns { category, lang, label, badgeClass }
-// category: 'markdown' | 'html' | 'code' | 'text' | 'viewable' | 'unsupported'
+// category: 'markdown' | 'html' | 'code' | 'text' | 'image' | 'viewable' | 'unsupported'
+// subtype: canonical grouping key used by the filter bar (shared by related extensions)
 const FILE_TYPES = {
   // Markdown
-  md:         { category: 'markdown', lang: null,         label: 'Markdown',   badgeClass: 'ft-md' },
-  mdx:        { category: 'markdown', lang: null,         label: 'MDX',        badgeClass: 'ft-md' },
-  markdown:   { category: 'markdown', lang: null,         label: 'Markdown',   badgeClass: 'ft-md' },
+  md:         { category: 'markdown', subtype: 'markdown', lang: null,         label: 'Markdown',    badgeClass: 'ft-md' },
+  mdx:        { category: 'markdown', subtype: 'markdown', lang: null,         label: 'MDX',         badgeClass: 'ft-md' },
+  markdown:   { category: 'markdown', subtype: 'markdown', lang: null,         label: 'Markdown',    badgeClass: 'ft-md' },
   // HTML / markup
-  html:       { category: 'html',     lang: 'html',       label: 'HTML',       badgeClass: 'ft-html' },
-  htm:        { category: 'html',     lang: 'html',       label: 'HTML',       badgeClass: 'ft-html' },
-  svg:        { category: 'html',     lang: 'svg',        label: 'SVG',        badgeClass: 'ft-html' },
-  xml:        { category: 'code',     lang: 'xml',        label: 'XML',        badgeClass: 'ft-code' },
+  html:       { category: 'html',     subtype: 'html',     lang: 'html',       label: 'HTML',        badgeClass: 'ft-html' },
+  htm:        { category: 'html',     subtype: 'html',     lang: 'html',       label: 'HTML',        badgeClass: 'ft-html' },
+  xml:        { category: 'html',     subtype: 'xml',      lang: 'xml',        label: 'XML',         badgeClass: 'ft-html' },
+  // SVG — image category: view as <img>, editable XML source
+  svg:        { category: 'image',    subtype: 'svg',      lang: 'xml',        label: 'SVG',         badgeClass: 'ft-html', canEdit: true },
   // JavaScript / TypeScript
-  js:         { category: 'code',     lang: 'javascript', label: 'JavaScript', badgeClass: 'ft-code' },
-  mjs:        { category: 'code',     lang: 'javascript', label: 'JS Module',  badgeClass: 'ft-code' },
-  cjs:        { category: 'code',     lang: 'javascript', label: 'CommonJS',   badgeClass: 'ft-code' },
-  jsx:        { category: 'code',     lang: 'jsx',        label: 'JSX',        badgeClass: 'ft-code' },
-  ts:         { category: 'code',     lang: 'typescript', label: 'TypeScript', badgeClass: 'ft-code' },
-  tsx:        { category: 'code',     lang: 'tsx',        label: 'TSX',        badgeClass: 'ft-code' },
-  // Web
-  css:        { category: 'code',     lang: 'css',        label: 'CSS',        badgeClass: 'ft-code' },
-  scss:       { category: 'code',     lang: 'scss',       label: 'SCSS',       badgeClass: 'ft-code' },
-  less:       { category: 'code',     lang: 'less',       label: 'Less',       badgeClass: 'ft-code' },
+  js:         { category: 'code',     subtype: 'js',       lang: 'javascript', label: 'JavaScript',  badgeClass: 'ft-code' },
+  mjs:        { category: 'code',     subtype: 'js',       lang: 'javascript', label: 'JS Module',   badgeClass: 'ft-code' },
+  cjs:        { category: 'code',     subtype: 'js',       lang: 'javascript', label: 'CommonJS',    badgeClass: 'ft-code' },
+  jsx:        { category: 'code',     subtype: 'js',       lang: 'jsx',        label: 'JSX',         badgeClass: 'ft-code' },
+  ts:         { category: 'code',     subtype: 'ts',       lang: 'typescript', label: 'TypeScript',  badgeClass: 'ft-code' },
+  tsx:        { category: 'code',     subtype: 'ts',       lang: 'tsx',        label: 'TSX',         badgeClass: 'ft-code' },
+  // Web styles
+  css:        { category: 'code',     subtype: 'css',      lang: 'css',        label: 'CSS',         badgeClass: 'ft-code' },
+  scss:       { category: 'code',     subtype: 'css',      lang: 'scss',       label: 'SCSS',        badgeClass: 'ft-code' },
+  less:       { category: 'code',     subtype: 'css',      lang: 'less',       label: 'Less',        badgeClass: 'ft-code' },
   // Data / config
-  json:       { category: 'code',     lang: 'json',       label: 'JSON',       badgeClass: 'ft-code' },
-  jsonc:      { category: 'code',     lang: 'json',       label: 'JSONC',      badgeClass: 'ft-code' },
-  yaml:       { category: 'code',     lang: 'yaml',       label: 'YAML',       badgeClass: 'ft-code' },
-  yml:        { category: 'code',     lang: 'yaml',       label: 'YAML',       badgeClass: 'ft-code' },
-  toml:       { category: 'code',     lang: 'toml',       label: 'TOML',       badgeClass: 'ft-code' },
+  json:       { category: 'code',     subtype: 'data',     lang: 'json',       label: 'JSON',        badgeClass: 'ft-code' },
+  jsonc:      { category: 'code',     subtype: 'data',     lang: 'json',       label: 'JSONC',       badgeClass: 'ft-code' },
+  yaml:       { category: 'code',     subtype: 'data',     lang: 'yaml',       label: 'YAML',        badgeClass: 'ft-code' },
+  yml:        { category: 'code',     subtype: 'data',     lang: 'yaml',       label: 'YAML',        badgeClass: 'ft-code' },
+  toml:       { category: 'code',     subtype: 'data',     lang: 'toml',       label: 'TOML',        badgeClass: 'ft-code' },
   // Shell
-  sh:         { category: 'code',     lang: 'bash',       label: 'Shell',      badgeClass: 'ft-code' },
-  bash:       { category: 'code',     lang: 'bash',       label: 'Bash',       badgeClass: 'ft-code' },
-  zsh:        { category: 'code',     lang: 'bash',       label: 'Zsh',        badgeClass: 'ft-code' },
-  fish:       { category: 'code',     lang: 'bash',       label: 'Fish',       badgeClass: 'ft-code' },
+  sh:         { category: 'code',     subtype: 'shell',    lang: 'bash',       label: 'Shell',       badgeClass: 'ft-code' },
+  bash:       { category: 'code',     subtype: 'shell',    lang: 'bash',       label: 'Bash',        badgeClass: 'ft-code' },
+  zsh:        { category: 'code',     subtype: 'shell',    lang: 'bash',       label: 'Zsh',         badgeClass: 'ft-code' },
+  fish:       { category: 'code',     subtype: 'shell',    lang: 'bash',       label: 'Fish',        badgeClass: 'ft-code' },
   // Systems / backend
-  py:         { category: 'code',     lang: 'python',     label: 'Python',     badgeClass: 'ft-code' },
-  rb:         { category: 'code',     lang: 'ruby',       label: 'Ruby',       badgeClass: 'ft-code' },
-  go:         { category: 'code',     lang: 'go',         label: 'Go',         badgeClass: 'ft-code' },
-  rs:         { category: 'code',     lang: 'rust',       label: 'Rust',       badgeClass: 'ft-code' },
-  java:       { category: 'code',     lang: 'java',       label: 'Java',       badgeClass: 'ft-code' },
-  kt:         { category: 'code',     lang: 'kotlin',     label: 'Kotlin',     badgeClass: 'ft-code' },
-  swift:      { category: 'code',     lang: 'swift',      label: 'Swift',      badgeClass: 'ft-code' },
-  c:          { category: 'code',     lang: 'c',          label: 'C',          badgeClass: 'ft-code' },
-  cpp:        { category: 'code',     lang: 'cpp',        label: 'C++',        badgeClass: 'ft-code' },
-  h:          { category: 'code',     lang: 'c',          label: 'C Header',   badgeClass: 'ft-code' },
-  hpp:        { category: 'code',     lang: 'cpp',        label: 'C++ Header', badgeClass: 'ft-code' },
-  cs:         { category: 'code',     lang: 'csharp',     label: 'C#',         badgeClass: 'ft-code' },
-  php:        { category: 'code',     lang: 'php',        label: 'PHP',        badgeClass: 'ft-code' },
-  // Data
-  sql:        { category: 'code',     lang: 'sql',        label: 'SQL',        badgeClass: 'ft-code' },
-  graphql:    { category: 'code',     lang: 'graphql',    label: 'GraphQL',    badgeClass: 'ft-code' },
+  py:         { category: 'code',     subtype: 'python',   lang: 'python',     label: 'Python',      badgeClass: 'ft-code' },
+  rb:         { category: 'code',     subtype: 'ruby',     lang: 'ruby',       label: 'Ruby',        badgeClass: 'ft-code' },
+  go:         { category: 'code',     subtype: 'go',       lang: 'go',         label: 'Go',          badgeClass: 'ft-code' },
+  rs:         { category: 'code',     subtype: 'rust',     lang: 'rust',       label: 'Rust',        badgeClass: 'ft-code' },
+  java:       { category: 'code',     subtype: 'java',     lang: 'java',       label: 'Java',        badgeClass: 'ft-code' },
+  kt:         { category: 'code',     subtype: 'java',     lang: 'kotlin',     label: 'Kotlin',      badgeClass: 'ft-code' },
+  swift:      { category: 'code',     subtype: 'swift',    lang: 'swift',      label: 'Swift',       badgeClass: 'ft-code' },
+  c:          { category: 'code',     subtype: 'c',        lang: 'c',          label: 'C',           badgeClass: 'ft-code' },
+  cpp:        { category: 'code',     subtype: 'c',        lang: 'cpp',        label: 'C++',         badgeClass: 'ft-code' },
+  h:          { category: 'code',     subtype: 'c',        lang: 'c',          label: 'C Header',    badgeClass: 'ft-code' },
+  hpp:        { category: 'code',     subtype: 'c',        lang: 'cpp',        label: 'C++ Header',  badgeClass: 'ft-code' },
+  cs:         { category: 'code',     subtype: 'cs',       lang: 'csharp',     label: 'C#',          badgeClass: 'ft-code' },
+  php:        { category: 'code',     subtype: 'php',      lang: 'php',        label: 'PHP',         badgeClass: 'ft-code' },
+  // Query languages
+  sql:        { category: 'code',     subtype: 'sql',      lang: 'sql',        label: 'SQL',         badgeClass: 'ft-code' },
+  graphql:    { category: 'code',     subtype: 'sql',      lang: 'graphql',    label: 'GraphQL',     badgeClass: 'ft-code' },
+  // Build files
+  dockerfile: { category: 'code',     subtype: 'build',    lang: 'docker',     label: 'Dockerfile',  badgeClass: 'ft-code' },
+  makefile:   { category: 'code',     subtype: 'build',    lang: 'makefile',   label: 'Makefile',    badgeClass: 'ft-code' },
   // Plain text
-  txt:        { category: 'text',     lang: null,         label: 'Text',       badgeClass: 'ft-text' },
-  log:        { category: 'text',     lang: null,         label: 'Log',        badgeClass: 'ft-text' },
-  csv:        { category: 'text',     lang: null,         label: 'CSV',        badgeClass: 'ft-text' },
-  tsv:        { category: 'text',     lang: null,         label: 'TSV',        badgeClass: 'ft-text' },
-  ini:        { category: 'text',     lang: null,         label: 'INI',        badgeClass: 'ft-text' },
-  cfg:        { category: 'text',     lang: null,         label: 'Config',     badgeClass: 'ft-text' },
-  conf:       { category: 'text',     lang: null,         label: 'Config',     badgeClass: 'ft-text' },
-  env:        { category: 'text',     lang: null,         label: '.env',       badgeClass: 'ft-text' },
-  gitignore:  { category: 'text',     lang: null,         label: 'gitignore',  badgeClass: 'ft-text' },
-  gitattributes: { category: 'text',  lang: null,         label: 'gitattributes', badgeClass: 'ft-text' },
-  editorconfig: { category: 'text',   lang: null,         label: 'editorconfig', badgeClass: 'ft-text' },
-  license:    { category: 'text',     lang: null,         label: 'License',    badgeClass: 'ft-text' },
-  dockerfile: { category: 'code',     lang: 'docker',     label: 'Dockerfile', badgeClass: 'ft-code' },
-  makefile:   { category: 'code',     lang: 'makefile',   label: 'Makefile',   badgeClass: 'ft-code' },
+  txt:        { category: 'text',     subtype: 'txt',      lang: null,         label: 'Text',        badgeClass: 'ft-text' },
+  log:        { category: 'text',     subtype: 'txt',      lang: null,         label: 'Log',         badgeClass: 'ft-text' },
+  csv:        { category: 'text',     subtype: 'csv',      lang: null,         label: 'CSV',         badgeClass: 'ft-text' },
+  tsv:        { category: 'text',     subtype: 'csv',      lang: null,         label: 'TSV',         badgeClass: 'ft-text' },
+  ini:        { category: 'text',     subtype: 'config',   lang: null,         label: 'INI',         badgeClass: 'ft-text' },
+  cfg:        { category: 'text',     subtype: 'config',   lang: null,         label: 'Config',      badgeClass: 'ft-text' },
+  conf:       { category: 'text',     subtype: 'config',   lang: null,         label: 'Config',      badgeClass: 'ft-text' },
+  env:        { category: 'text',     subtype: 'config',   lang: null,         label: '.env',        badgeClass: 'ft-text' },
+  editorconfig: { category: 'text',   subtype: 'config',   lang: null,         label: 'editorconfig',badgeClass: 'ft-text' },
+  gitignore:  { category: 'text',     subtype: 'git',      lang: null,         label: 'gitignore',   badgeClass: 'ft-text' },
+  gitattributes: { category: 'text',  subtype: 'git',      lang: null,         label: 'gitattributes',badgeClass: 'ft-text' },
+  license:    { category: 'text',     subtype: 'docs',     lang: null,         label: 'License',     badgeClass: 'ft-text' },
 };
 
 // Browser-viewable (non-text) file types
 // category 'viewable', viewerType: 'image' | 'video' | 'audio' | 'pdf'
 const VIEWABLE_TYPES = {
-  // Images
-  png:  { category: 'viewable', viewerType: 'image', label: 'PNG',  badgeClass: 'ft-view', mime: 'image/png' },
-  jpg:  { category: 'viewable', viewerType: 'image', label: 'JPEG', badgeClass: 'ft-view', mime: 'image/jpeg' },
-  jpeg: { category: 'viewable', viewerType: 'image', label: 'JPEG', badgeClass: 'ft-view', mime: 'image/jpeg' },
-  gif:  { category: 'viewable', viewerType: 'image', label: 'GIF',  badgeClass: 'ft-view', mime: 'image/gif' },
-  webp: { category: 'viewable', viewerType: 'image', label: 'WebP', badgeClass: 'ft-view', mime: 'image/webp' },
-  avif: { category: 'viewable', viewerType: 'image', label: 'AVIF', badgeClass: 'ft-view', mime: 'image/avif' },
-  ico:  { category: 'viewable', viewerType: 'image', label: 'ICO',  badgeClass: 'ft-view', mime: 'image/x-icon' },
-  bmp:  { category: 'viewable', viewerType: 'image', label: 'BMP',  badgeClass: 'ft-view', mime: 'image/bmp' },
+  // Raster images
+  png:  { category: 'viewable', subtype: 'raster', viewerType: 'image', label: 'PNG',  badgeClass: 'ft-view', mime: 'image/png' },
+  jpg:  { category: 'viewable', subtype: 'jpeg',   viewerType: 'image', label: 'JPEG', badgeClass: 'ft-view', mime: 'image/jpeg' },
+  jpeg: { category: 'viewable', subtype: 'jpeg',   viewerType: 'image', label: 'JPEG', badgeClass: 'ft-view', mime: 'image/jpeg' },
+  gif:  { category: 'viewable', subtype: 'raster', viewerType: 'image', label: 'GIF',  badgeClass: 'ft-view', mime: 'image/gif' },
+  webp: { category: 'viewable', subtype: 'raster', viewerType: 'image', label: 'WebP', badgeClass: 'ft-view', mime: 'image/webp' },
+  avif: { category: 'viewable', subtype: 'raster', viewerType: 'image', label: 'AVIF', badgeClass: 'ft-view', mime: 'image/avif' },
+  ico:  { category: 'viewable', subtype: 'raster', viewerType: 'image', label: 'ICO',  badgeClass: 'ft-view', mime: 'image/x-icon' },
+  bmp:  { category: 'viewable', subtype: 'raster', viewerType: 'image', label: 'BMP',  badgeClass: 'ft-view', mime: 'image/bmp' },
   // PDF
-  pdf:  { category: 'viewable', viewerType: 'pdf',   label: 'PDF',  badgeClass: 'ft-view', mime: 'application/pdf' },
+  pdf:  { category: 'viewable', subtype: 'pdf',    viewerType: 'pdf',   label: 'PDF',  badgeClass: 'ft-view', mime: 'application/pdf' },
   // Video
-  mp4:  { category: 'viewable', viewerType: 'video', label: 'MP4',  badgeClass: 'ft-view', mime: 'video/mp4' },
-  webm: { category: 'viewable', viewerType: 'video', label: 'WebM', badgeClass: 'ft-view', mime: 'video/webm' },
-  ogv:  { category: 'viewable', viewerType: 'video', label: 'OGG',  badgeClass: 'ft-view', mime: 'video/ogg' },
-  mov:  { category: 'viewable', viewerType: 'video', label: 'MOV',  badgeClass: 'ft-view', mime: 'video/mp4' },
+  mp4:  { category: 'viewable', subtype: 'video',  viewerType: 'video', label: 'MP4',  badgeClass: 'ft-view', mime: 'video/mp4' },
+  webm: { category: 'viewable', subtype: 'video',  viewerType: 'video', label: 'WebM', badgeClass: 'ft-view', mime: 'video/webm' },
+  ogv:  { category: 'viewable', subtype: 'video',  viewerType: 'video', label: 'OGG',  badgeClass: 'ft-view', mime: 'video/ogg' },
+  mov:  { category: 'viewable', subtype: 'video',  viewerType: 'video', label: 'MOV',  badgeClass: 'ft-view', mime: 'video/mp4' },
   // Audio
-  mp3:  { category: 'viewable', viewerType: 'audio', label: 'MP3',  badgeClass: 'ft-view', mime: 'audio/mpeg' },
-  ogg:  { category: 'viewable', viewerType: 'audio', label: 'OGG',  badgeClass: 'ft-view', mime: 'audio/ogg' },
-  wav:  { category: 'viewable', viewerType: 'audio', label: 'WAV',  badgeClass: 'ft-view', mime: 'audio/wav' },
-  flac: { category: 'viewable', viewerType: 'audio', label: 'FLAC', badgeClass: 'ft-view', mime: 'audio/flac' },
-  m4a:  { category: 'viewable', viewerType: 'audio', label: 'M4A',  badgeClass: 'ft-view', mime: 'audio/mp4' },
+  mp3:  { category: 'viewable', subtype: 'audio',  viewerType: 'audio', label: 'MP3',  badgeClass: 'ft-view', mime: 'audio/mpeg' },
+  ogg:  { category: 'viewable', subtype: 'audio',  viewerType: 'audio', label: 'OGG',  badgeClass: 'ft-view', mime: 'audio/ogg' },
+  wav:  { category: 'viewable', subtype: 'audio',  viewerType: 'audio', label: 'WAV',  badgeClass: 'ft-view', mime: 'audio/wav' },
+  flac: { category: 'viewable', subtype: 'audio',  viewerType: 'audio', label: 'FLAC', badgeClass: 'ft-view', mime: 'audio/flac' },
+  m4a:  { category: 'viewable', subtype: 'audio',  viewerType: 'audio', label: 'M4A',  badgeClass: 'ft-view', mime: 'audio/mp4' },
 };
 
 // Extension sets for quick lookup
@@ -1001,13 +1031,13 @@ function getFileType(filename) {
   // Exact name matches (Dockerfile, LICENSE, etc.)
   if (NO_EXT_NAMES.has(filename)) {
     const lower = filename.toLowerCase();
-    return FILE_TYPES[lower] || { category: 'text', lang: null, label: filename, badgeClass: 'ft-text' };
+    return FILE_TYPES[lower] || { category: 'text', subtype: 'docs', lang: null, label: filename, badgeClass: 'ft-text' };
   }
   const ext = getExt(filename);
-  if (!ext) return { category: 'unsupported', label: 'File', badgeClass: 'ft-unsupported' };
+  if (!ext) return { category: 'unsupported', subtype: 'unsupported', label: 'File', badgeClass: 'ft-unsupported' };
   if (FILE_TYPES[ext])     return FILE_TYPES[ext];
   if (VIEWABLE_TYPES[ext]) return VIEWABLE_TYPES[ext];
-  return { category: 'unsupported', label: ext.toUpperCase(), badgeClass: 'ft-unsupported' };
+  return { category: 'unsupported', subtype: 'unsupported', label: ext.toUpperCase(), badgeClass: 'ft-unsupported' };
 }
 
 // Returns true for text-renderable files only (used for internal link interception)
@@ -1042,8 +1072,8 @@ const state = {
   splitView:        false,
   wrapMode:         true,
   splitRatio:       0.5,
-  // Filter: set of categories to SHOW
-  visibleCategories: new Set(['markdown','html','code','text','viewable','unsupported']),
+  // Filter: set of subtypes to SHOW (matches ft.subtype from FILE_TYPES / VIEWABLE_TYPES)
+  visibleSubtypes: null,   // initialised in loadFolder() from all known subtypes
   _blobUrl:         null,   // object URL for current viewable file (revoked on nav)
   watchInterval:    null,   // setInterval ID for auto file-tree refresh
   treeCollapsed:    false,  // true when user has collapsed all tree dirs
@@ -1100,12 +1130,15 @@ const btnWrap          = $('btn-wrap');
 const btnSplit         = $('btn-split');
 const btnResetSplit    = $('btn-reset-split');
 const btnReveal        = $('btn-reveal');
+const btnHex           = $('btn-hex');
+const btnBeautify      = $('btn-beautify');
 const btnRefresh       = $('btn-refresh');
 const btnEdit          = $('btn-edit');
 const btnCancel        = $('btn-cancel');
 const btnSave          = $('btn-save');
 const permMsg          = $('perm-msg');
 const dropOverlay      = $('drop-overlay');
+const activityLogSave  = $('activity-log-save');
 
 // ── OS folder drag-and-drop ───────────────────────────────────────────────────
 // dragDepth tracks nested dragenter/dragleave events to prevent overlay flicker.
@@ -1382,7 +1415,8 @@ async function loadFolder(handle) {
   state.writePermission = false;
   state.splitRatio      = 0.5;
   state.currentFileType = null;
-  state.visibleCategories = new Set(['markdown','html','code','text','viewable','unsupported']);
+  // visibleSubtypes: start with ALL subtypes visible
+  state.visibleSubtypes = getAllSubtypes();
   state.files.clear();
   state.dirs.clear();
   state.tree = { name: handle.name, children: {}, files: [], path: '', handle: handle };
@@ -1750,6 +1784,133 @@ btnToggleLog.addEventListener('click', toggleActivityLog);
 activityLogClear.addEventListener('click', () => {
   activityLogBody.innerHTML = '<div class="log-empty">No activity yet.</div>';
 });
+activityLogSave.addEventListener('click', saveActivityLog);
+
+function saveActivityLog() {
+  const entries = [...activityLogBody.querySelectorAll('.log-entry')];
+  if (!entries.length) { showToast('Log is empty', { type: 'warn', duration: 2000 }); return; }
+  const lines = entries.map(e => {
+    const t = e.querySelector('.log-entry-time')?.textContent || '';
+    const m = e.querySelector('.log-entry-msg')?.textContent || '';
+    return `[${t}] ${m}`;
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `mdweb-log-${new Date().toISOString().slice(0,19).replace(/[T:]/g,'-')}.txt`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  showToast('Log saved', { type: 'ok', duration: 2000 });
+}
+
+// ── Hex view toggle ───────────────────────────────────────────────────────────
+function toggleHexView() {
+  if (!state.currentPath) return;
+  if (state.hexMode) {
+    // Exit hex: reload file normally
+    state.hexMode   = false;
+    state.hexBuffer = null;
+    openFile(state.currentPath);
+  } else {
+    // Enter hex view
+    const handle = state.files.get(state.currentPath);
+    if (!handle) return;
+    const filename = state.currentPath.split('/').pop();
+    renderHexView(handle, state.currentPath, filename);
+  }
+}
+btnHex && btnHex.addEventListener('click', toggleHexView);
+
+// ── Beautify / format ─────────────────────────────────────────────────────────
+const BEAUTIFY_LANGS = new Set(['json','xml','html','svg','javascript','jsx','typescript','tsx','css','scss','less']);
+
+function beautifyText(text, lang) {
+  if (!lang) return text;
+  const l = lang.toLowerCase();
+  try {
+    if (l === 'json') {
+      return JSON.stringify(JSON.parse(text), null, 2);
+    }
+    if (l === 'xml' || l === 'html' || l === 'svg') {
+      // Use DOMParser for prettify
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, l === 'html' ? 'text/html' : 'text/xml');
+      if (doc.querySelector('parsererror')) return text; // bail on parse error
+      return prettyXml(l === 'html' ? doc.documentElement : doc.documentElement, 0);
+    }
+    if (l === 'css' || l === 'scss' || l === 'less') {
+      return text
+        .replace(/\s*{\s*/g, ' {\n  ')
+        .replace(/;\s*/g, ';\n  ')
+        .replace(/\s*}\s*/g, '\n}\n')
+        .replace(/  \n}/g, '\n}')
+        .trim();
+    }
+    // JS / TS: simple indentation based on braces
+    let out = '', indent = 0;
+    for (const line of text.split('\n')) {
+      const t = line.trim();
+      if (!t) { out += '\n'; continue; }
+      const closes = (t.match(/^[}\])]/) || []).length;
+      indent = Math.max(0, indent - closes);
+      out += '  '.repeat(indent) + t + '\n';
+      indent += (t.match(/[{[(]\s*$/) || []).length;
+    }
+    return out;
+  } catch { return text; }
+}
+
+function prettyXml(node, depth) {
+  const pad = '  '.repeat(depth);
+  if (node.nodeType === Node.TEXT_NODE) {
+    const t = node.textContent.trim();
+    return t ? pad + t + '\n' : '';
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) return '';
+  const tag = node.tagName;
+  const attrs = [...node.attributes].map(a => ` ${a.name}="${a.value}"`).join('');
+  const children = [...node.childNodes];
+  if (children.length === 0) return `${pad}<${tag}${attrs}/>\n`;
+  const onlyText = children.length === 1 && children[0].nodeType === Node.TEXT_NODE;
+  if (onlyText) return `${pad}<${tag}${attrs}>${children[0].textContent.trim()}</${tag}>\n`;
+  let inner = '';
+  for (const c of children) inner += prettyXml(c, depth + 1);
+  return `${pad}<${tag}${attrs}>\n${inner}${pad}</${tag}>\n`;
+}
+
+async function doBeautify() {
+  const ft = state.currentFileType;
+  if (!ft || !ft.lang || !BEAUTIFY_LANGS.has(ft.lang)) return;
+  if (state.editMode) {
+    const pretty = beautifyText(editor.value, ft.lang);
+    if (pretty === editor.value) { showToast('Already formatted', { type: 'ok', duration: 2000 }); return; }
+    editor.value = pretty;
+    editor.dispatchEvent(new Event('input'));
+    showToast('Formatted', { type: 'ok', duration: 2000 });
+  } else {
+    // Read mode: format and save
+    const handle = state.files.get(state.currentPath);
+    if (!handle) return;
+    if (!state.writePermission) {
+      const perm = await state.rootHandle.requestPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') { showPermDenied(); return; }
+      state.writePermission = true;
+    }
+    const pretty = beautifyText(state.currentRawText, ft.lang);
+    if (pretty === state.currentRawText) { showToast('Already formatted', { type: 'ok', duration: 2000 }); return; }
+    try {
+      const w = await handle.createWritable();
+      await w.write(pretty); await w.close();
+      state.currentRawText = pretty;
+      renderForType(ft.category === 'markdown' ? parseFileMeta(pretty).body : pretty, ft, readerInner);
+      logActivity(`Formatted: ${state.currentPath.split('/').pop()}`, { type: 'ok', ref: `file:${state.currentPath}` });
+      showToast('Formatted & saved', { type: 'ok', duration: 2000 });
+    } catch(e) {
+      showToast('Beautify failed: ' + e.message, { type: 'error' });
+    }
+  }
+}
+btnBeautify && btnBeautify.addEventListener('click', doBeautify);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function findFile(name) {
@@ -1881,7 +2042,7 @@ function makeFileCard(file) {
   const iconDot = document.createElement('span');
   iconDot.className = 'card-file-icon';
   // Coloured dot per type
-  const dotColor = (CAT_META[ft.category] || { color: '#374151' }).color;
+  const dotColor = subtypeColor(ft.subtype || 'unsupported');
   iconDot.innerHTML = `<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="${dotColor}"/></svg>`;
 
   const nameEl = document.createElement('div');
@@ -2207,6 +2368,42 @@ async function openFile(path) {
     return;
   }
 
+  // ── SVG / editable image file ──
+  if (ft.category === 'image') {
+    // Read raw text (SVG is XML) for edit mode; also show as <img> in viewer
+    let svgText = '';
+    try {
+      const handle = state.files.get(path);
+      svgText = await (await handle.getFile()).text();
+    } catch {
+      svgText = '';
+    }
+    state.currentRawText = svgText;
+    metaStrip.classList.remove('visible');
+    metaStrip.innerHTML = '';
+    hideAllPanels();
+    welcomeContent.style.display = 'none';
+    breadcrumb.classList.add('visible');
+    contentToolbar.classList.add('visible');
+    viewerArea.innerHTML = '';
+    viewerArea.classList.add('visible');
+    try {
+      const handle = state.files.get(path);
+      const file   = await handle.getFile();
+      const url    = URL.createObjectURL(file);
+      state._blobUrl = url;
+      const img = document.createElement('img');
+      img.src = url; img.alt = filename;
+      viewerArea.appendChild(img);
+    } catch {
+      viewerArea.innerHTML = `<div class="notice-pane"><div class="notice-pane-icon">⚠️</div><div class="notice-pane-title">Could not load SVG</div><div class="notice-pane-sub">${escHtml(filename)}</div></div>`;
+    }
+    logActivity(`Opened: ${path}`, { ref: `file:${path}` });
+    syncToolbar();
+    renderBreadcrumbForFile(path);
+    return;
+  }
+
   // ── Text / Markdown / HTML / Code file ──
   let text = '';
   try {
@@ -2249,6 +2446,10 @@ function renderForType(text, ft, target, isPreview = false) {
       renderHtml(text, target, isPreview);
       break;
     case 'code':
+      renderCode(text, ft, target);
+      break;
+    case 'image':
+      // SVG source: show as syntax-highlighted XML
       renderCode(text, ft, target);
       break;
     default:
@@ -2401,12 +2602,14 @@ function syncToolbar() {
     ftBadge.style.display = 'none';
   }
 
-  // In hex-viewer mode: hide toggles and Edit/Save — only Reveal is useful
+  // In hex-viewer mode: hide most controls — only Hex toggle + Reveal stay
   if (state.hexMode) {
     btnWrap.style.display       = 'none';
     btnSplit.style.display      = 'none';
     btnResetSplit.style.display = 'none';
     btnReveal.style.display     = state.currentPath ? '' : 'none';
+    if (btnHex) { btnHex.style.display = state.currentPath ? '' : 'none'; btnHex.classList.add('active'); }
+    if (btnBeautify) btnBeautify.style.display = 'none';
     btnRefresh.style.display    = 'none';
     btnEdit.style.display       = 'none';
     btnCancel.style.display     = 'none';
@@ -2425,8 +2628,21 @@ function syncToolbar() {
   btnResetSplit.style.display = showReset ? '' : 'none';
   if (showReset) btnResetSplit.classList.toggle('at-center', Math.abs(state.splitRatio - 0.5) < 0.01);
 
-  const cat     = state.currentFileType && state.currentFileType.category;
-  const canEdit = cat && cat !== 'viewable' && cat !== 'unsupported';
+  // canEdit: text files AND SVG (has canEdit:true flag)
+  const cat     = ft && ft.category;
+  const canEdit = ft && (ft.canEdit === true || (cat && cat !== 'viewable' && cat !== 'unsupported' && cat !== 'image'));
+
+  // Hex button: visible when a file is open and not in edit mode
+  if (btnHex) {
+    btnHex.style.display = (state.currentPath && !state.editMode) ? '' : 'none';
+    btnHex.classList.toggle('active', false);
+  }
+
+  // Beautify button: visible when file has a beautifiable lang and not in hex mode
+  const canBeautify = ft && ft.lang && BEAUTIFY_LANGS.has(ft.lang);
+  if (btnBeautify) {
+    btnBeautify.style.display = (state.currentPath && canBeautify) ? '' : 'none';
+  }
 
   if (state.editMode) {
     btnReveal.style.display  = 'none';
@@ -2497,12 +2713,13 @@ function updateLineNumbers() {
 async function enterEditMode() {
   if (!state.currentPath) return;
 
-  // Block editing of non-text files
-  const cat = state.currentFileType && state.currentFileType.category;
-  if (cat === 'viewable' || cat === 'unsupported') {
-    // Show a brief no-edit message in-place
+  // Block editing of non-editable files
+  const ft  = state.currentFileType;
+  const cat = ft && ft.category;
+  const canEdit = ft && (ft.canEdit === true || (cat && cat !== 'viewable' && cat !== 'unsupported' && cat !== 'image'));
+  if (!canEdit) {
     const origHTML = btnEdit.innerHTML;
-    btnEdit.textContent = cat === 'viewable' ? '⚠ View only' : '⚠ Cannot edit';
+    btnEdit.textContent = '⚠ View only';
     btnEdit.style.opacity = '0.6';
     setTimeout(() => { btnEdit.innerHTML = origHTML; btnEdit.style.opacity = ''; }, 2000);
     return;
@@ -2521,6 +2738,8 @@ async function enterEditMode() {
   updateLineNumbers();
   applyWrapMode();
   clearHtmlMode();
+  // For SVG: hide viewer-area and show editor
+  viewerArea.classList.remove('visible');
   reader.style.display = 'none';
   editArea.classList.add('visible');
   applySplitView();
@@ -2536,16 +2755,32 @@ function leaveEditMode() {
   splitDivider.style.display = 'none';
   editorPane.style.flex  = '1';
   editorPane.style.width = '';
-  reader.style.display   = 'block';
   // Re-render from saved content so any edits discarded are reflected
   const ft = state.currentFileType;
-  if (ft) {
-    if (ft.category === 'markdown') {
-      const { meta, body } = parseFileMeta(state.currentRawText);
-      renderMetaStrip(meta);
-      renderMarkdown(body, readerInner);
-    } else {
-      renderForType(state.currentRawText, ft, readerInner);
+  if (ft && ft.category === 'image') {
+    // SVG: show viewer-area with the (possibly updated) content as a blob URL
+    reader.style.display = 'none';
+    viewerArea.innerHTML = '';
+    viewerArea.classList.add('visible');
+    if (state.currentRawText) {
+      const blob = new Blob([state.currentRawText], { type: 'image/svg+xml' });
+      if (state._blobUrl) URL.revokeObjectURL(state._blobUrl);
+      const url = URL.createObjectURL(blob);
+      state._blobUrl = url;
+      const img = document.createElement('img');
+      img.src = url; img.alt = state.currentPath ? state.currentPath.split('/').pop() : '';
+      viewerArea.appendChild(img);
+    }
+  } else {
+    reader.style.display = 'block';
+    if (ft) {
+      if (ft.category === 'markdown') {
+        const { meta, body } = parseFileMeta(state.currentRawText);
+        renderMetaStrip(meta);
+        renderMarkdown(body, readerInner);
+      } else {
+        renderForType(state.currentRawText, ft, readerInner);
+      }
     }
   }
   syncToolbar();
@@ -2584,11 +2819,16 @@ function refreshPreview() {
   const ft = state.currentFileType;
   const text = editor.value;
   clearHtmlMode();
-  previewInner.className = ft.category === 'markdown' ? 'md' : '';
-  if (ft.category === 'markdown') {
+  if (ft.category === 'image') {
+    // SVG live preview: render raw SVG markup directly
+    previewInner.className = '';
+    previewInner.innerHTML = text;
+  } else if (ft.category === 'markdown') {
+    previewInner.className = 'md';
     const { body } = parseFileMeta(text);
     renderMarkdown(body, previewInner);
   } else {
+    previewInner.className = '';
     renderForType(text, ft, previewInner, true);
   }
 }
@@ -2759,92 +2999,218 @@ previewPane.addEventListener('scroll', () => {
 });
 
 // ── File type filter bar ──────────────────────────────────────────────────────
-const CAT_META = {
-  markdown:    { label: 'Markdown',    color: '#58a6ff' },
-  html:        { label: 'HTML',        color: '#4ade80' },
-  code:        { label: 'Code',        color: '#c084fc' },
-  text:        { label: 'Text',        color: '#6e7a8a' },
-  viewable:    { label: 'Viewable',    color: '#22d3ee' },
-  unsupported: { label: 'Unsupported', color: '#374151' },
-};
-const CAT_ORDER = ['markdown','html','code','text','viewable','unsupported'];
+// Two-level hierarchy: groups contain subtypes.
+// Each file's ft.subtype maps to a subtype entry in a group.
+const FILTER_GROUPS = [
+  { key: 'markdown',    label: 'Markdown',    color: '#58a6ff', subtypes: [
+    { key: 'markdown', label: 'Markdown', exts: ['md','mdx','markdown'] },
+  ]},
+  { key: 'web',         label: 'Web',         color: '#4ade80', subtypes: [
+    { key: 'html',     label: 'HTML',         exts: ['html','htm'] },
+    { key: 'xml',      label: 'XML',          exts: ['xml'] },
+    { key: 'css',      label: 'CSS / Styles', exts: ['css','scss','less'] },
+  ]},
+  { key: 'code',        label: 'Code',        color: '#c084fc', subtypes: [
+    { key: 'js',       label: 'JavaScript',   exts: ['js','mjs','cjs','jsx'] },
+    { key: 'ts',       label: 'TypeScript',   exts: ['ts','tsx'] },
+    { key: 'python',   label: 'Python',       exts: ['py'] },
+    { key: 'shell',    label: 'Shell',        exts: ['sh','bash','zsh','fish'] },
+    { key: 'c',        label: 'C / C++',      exts: ['c','h','cpp','hpp'] },
+    { key: 'cs',       label: 'C#',           exts: ['cs'] },
+    { key: 'java',     label: 'Java / Kotlin',exts: ['java','kt'] },
+    { key: 'swift',    label: 'Swift',        exts: ['swift'] },
+    { key: 'ruby',     label: 'Ruby',         exts: ['rb'] },
+    { key: 'go',       label: 'Go',           exts: ['go'] },
+    { key: 'rust',     label: 'Rust',         exts: ['rs'] },
+    { key: 'php',      label: 'PHP',          exts: ['php'] },
+    { key: 'sql',      label: 'SQL / GraphQL',exts: ['sql','graphql'] },
+    { key: 'data',     label: 'Data / Config',exts: ['json','jsonc','yaml','yml','toml'] },
+    { key: 'build',    label: 'Build files',  exts: ['dockerfile','makefile'] },
+  ]},
+  { key: 'text',        label: 'Text',        color: '#6e7a8a', subtypes: [
+    { key: 'txt',      label: 'Plain text',   exts: ['txt','log'] },
+    { key: 'csv',      label: 'CSV / TSV',    exts: ['csv','tsv'] },
+    { key: 'config',   label: 'Config',       exts: ['ini','cfg','conf','env','editorconfig'] },
+    { key: 'git',      label: 'Git files',    exts: ['gitignore','gitattributes'] },
+    { key: 'docs',     label: 'Docs / License',exts: ['license'] },
+  ]},
+  { key: 'image',       label: 'Images',      color: '#22d3ee', subtypes: [
+    { key: 'raster',   label: 'Raster',       exts: ['png','webp','gif','bmp','ico','avif'] },
+    { key: 'jpeg',     label: 'JPEG',         exts: ['jpg','jpeg'] },
+    { key: 'svg',      label: 'SVG',          exts: ['svg'] },
+    { key: 'pdf',      label: 'PDF',          exts: ['pdf'] },
+  ]},
+  { key: 'video',       label: 'Video',       color: '#f59e0b', subtypes: [
+    { key: 'video',    label: 'Video',        exts: ['mp4','webm','ogv','mov'] },
+  ]},
+  { key: 'audio',       label: 'Audio',       color: '#10b981', subtypes: [
+    { key: 'audio',    label: 'Audio',        exts: ['mp3','ogg','wav','flac','m4a'] },
+  ]},
+  { key: 'unsupported', label: 'Unsupported', color: '#374151', subtypes: [
+    { key: 'unsupported', label: 'Unsupported', exts: [] },
+  ]},
+];
 
-// Count files per category in the whole tree
-function countByCategory(node, counts = {}) {
+// Build a reverse map: subtype key → group
+const SUBTYPE_TO_GROUP = {};
+for (const g of FILTER_GROUPS) for (const s of g.subtypes) SUBTYPE_TO_GROUP[s.key] = g;
+
+// Return a Set of all subtype keys across all groups
+function getAllSubtypes() {
+  const all = new Set();
+  for (const g of FILTER_GROUPS) for (const s of g.subtypes) all.add(s.key);
+  return all;
+}
+
+// Legacy helper — returns a color for a subtype (used in makeFileItem)
+function subtypeColor(subtype) {
+  const g = SUBTYPE_TO_GROUP[subtype];
+  return g ? g.color : '#374151';
+}
+
+// Count files per subtype in the whole tree
+function countBySubtype(node, counts = {}) {
   for (const f of node.files) {
-    const cat = getFileType(f.name).category;
-    counts[cat] = (counts[cat] || 0) + 1;
+    const st = getFileType(f.name).subtype || 'unsupported';
+    counts[st] = (counts[st] || 0) + 1;
   }
-  for (const child of Object.values(node.children)) countByCategory(child, counts);
+  for (const child of Object.values(node.children)) countBySubtype(child, counts);
   return counts;
 }
 
 function buildFilterBar() {
   filterBody.innerHTML = '';
-  const counts = countByCategory(state.tree);
+  const counts = countBySubtype(state.tree);
 
-  // Only show categories that actually exist in this folder
-  const presentCats = CAT_ORDER.filter(c => counts[c]);
-  if (presentCats.length <= 1) {
-    // Not useful to show a filter for one category
+  // Determine which groups have at least one file present
+  const presentGroups = FILTER_GROUPS.filter(g => g.subtypes.some(s => counts[s.key]));
+  if (presentGroups.length <= 1 && presentGroups.every(g => g.subtypes.length <= 1)) {
     treeFilter.classList.remove('visible');
     return;
   }
 
-  for (const cat of presentCats) {
-    const cm = CAT_META[cat];
-    const isChecked = state.visibleCategories.has(cat);
+  for (const grp of presentGroups) {
+    // Compute present subtypes for this group
+    const presentSubs = grp.subtypes.filter(s => counts[s.key]);
+    const allSubsChecked = presentSubs.every(s => state.visibleSubtypes.has(s.key));
+    const someSubsChecked = presentSubs.some(s => state.visibleSubtypes.has(s.key));
 
-    const row = document.createElement('div');
-    row.className = 'filter-row';
-    row.dataset.cat = cat;
+    // Group header row
+    const grpRow = document.createElement('div');
+    grpRow.className = 'filter-row filter-group-header';
+    grpRow.dataset.group = grp.key;
 
-    const check = document.createElement('div');
-    check.className = `filter-check cat-${cat}${isChecked ? ' checked' : ''}`;
-    check.innerHTML = `<svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2.5 2.5L7 1.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    const grpCheck = document.createElement('div');
+    grpCheck.className = `filter-check filter-group-check${allSubsChecked ? ' checked' : (someSubsChecked ? ' indeterminate' : '')}`;
+    grpCheck.innerHTML = `<svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2.5 2.5L7 1.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-    const dot = document.createElement('span');
-    dot.className = 'filter-dot';
-    dot.innerHTML = `<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="${cm.color}"/></svg>`;
+    const grpDot = document.createElement('span');
+    grpDot.className = 'filter-dot';
+    grpDot.innerHTML = `<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="${grp.color}"/></svg>`;
 
-    const lbl = document.createElement('span');
-    lbl.className = 'filter-label';
-    lbl.textContent = cm.label;
+    const grpLbl = document.createElement('span');
+    grpLbl.className = 'filter-label filter-group-label';
+    grpLbl.textContent = grp.label;
 
-    const cnt = document.createElement('span');
-    cnt.className = 'filter-count';
-    cnt.textContent = counts[cat];
+    const grpCnt = document.createElement('span');
+    grpCnt.className = 'filter-count';
+    grpCnt.textContent = presentSubs.reduce((s, st) => s + (counts[st.key] || 0), 0);
 
-    row.appendChild(check); row.appendChild(dot); row.appendChild(lbl); row.appendChild(cnt);
-    row.addEventListener('click', () => toggleFilterCat(cat));
-    filterBody.appendChild(row);
+    // Expand/collapse chevron for groups with multiple subtypes
+    const grpChev = document.createElement('span');
+    grpChev.className = 'filter-group-chevron';
+    grpChev.innerHTML = `<svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M2 3l2 2 2-2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+    grpRow.appendChild(grpCheck); grpRow.appendChild(grpDot); grpRow.appendChild(grpLbl); grpRow.appendChild(grpCnt);
+    if (presentSubs.length > 1) grpRow.appendChild(grpChev);
+    filterBody.appendChild(grpRow);
+
+    // Sub-rows container (only rendered if group has > 1 present subtype)
+    if (presentSubs.length > 1) {
+      const subBody = document.createElement('div');
+      subBody.className = 'filter-sub-body';
+      subBody.dataset.group = grp.key;
+
+      for (const sub of presentSubs) {
+        const isChecked = state.visibleSubtypes.has(sub.key);
+        const subRow = document.createElement('div');
+        subRow.className = 'filter-row filter-sub-row';
+        subRow.dataset.subtype = sub.key;
+
+        const subCheck = document.createElement('div');
+        subCheck.className = `filter-check filter-sub-check${isChecked ? ' checked' : ''}`;
+        subCheck.innerHTML = `<svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2.5 2.5L7 1.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+        const subLbl = document.createElement('span');
+        subLbl.className = 'filter-label filter-sub-label';
+        subLbl.textContent = sub.label;
+
+        const subCnt = document.createElement('span');
+        subCnt.className = 'filter-count';
+        subCnt.textContent = counts[sub.key] || 0;
+
+        subRow.appendChild(subCheck); subRow.appendChild(subLbl); subRow.appendChild(subCnt);
+        subRow.addEventListener('click', e => { e.stopPropagation(); toggleFilterSubtype(sub.key); });
+        subBody.appendChild(subRow);
+      }
+
+      filterBody.appendChild(subBody);
+
+      // Group header click: toggle group expand/collapse (chevron) OR toggle all subs
+      grpRow.addEventListener('click', e => {
+        // If click is on the check area (left ~20px), toggle all subs checked state
+        const rect = grpRow.getBoundingClientRect();
+        if (e.clientX - rect.left < 28) {
+          toggleFilterGroup(grp.key);
+        } else {
+          // Toggle sub-body open/close
+          subBody.classList.toggle('open');
+          grpChev.classList.toggle('open', subBody.classList.contains('open'));
+        }
+      });
+    } else {
+      // Single-subtype group: clicking the row toggles the single subtype
+      const onlySub = presentSubs[0];
+      grpRow.addEventListener('click', () => toggleFilterSubtype(onlySub.key));
+    }
   }
 
   updateFilterCount();
 }
 
-function toggleFilterCat(cat) {
-  if (state.visibleCategories.has(cat)) {
-    // Don't allow deselecting the last visible category
-    if (state.visibleCategories.size <= 1) return;
-    state.visibleCategories.delete(cat);
-  } else {
-    state.visibleCategories.add(cat);
-  }
-  // Update check UI
-  const row = filterBody.querySelector(`[data-cat="${cat}"]`);
-  if (row) {
-    const check = row.querySelector('.filter-check');
-    check.classList.toggle('checked', state.visibleCategories.has(cat));
+function toggleFilterGroup(groupKey) {
+  const grp = FILTER_GROUPS.find(g => g.key === groupKey);
+  if (!grp) return;
+  const presentSubs = grp.subtypes.filter(s => countBySubtype(state.tree)[s.key]);
+  const allVisible = presentSubs.every(s => state.visibleSubtypes.has(s.key));
+  // If all visible → hide all (unless it would hide everything)
+  // If any hidden → show all
+  const totalVisible = state.visibleSubtypes.size;
+  if (allVisible && totalVisible <= presentSubs.length) return; // would hide everything
+  for (const s of presentSubs) {
+    if (allVisible) state.visibleSubtypes.delete(s.key);
+    else state.visibleSubtypes.add(s.key);
   }
   applyTreeFilter();
-  updateFilterCount();
+  buildFilterBar();
+}
+
+function toggleFilterSubtype(key) {
+  if (state.visibleSubtypes.has(key)) {
+    if (state.visibleSubtypes.size <= 1) return; // can't hide everything
+    state.visibleSubtypes.delete(key);
+  } else {
+    state.visibleSubtypes.add(key);
+  }
+  applyTreeFilter();
+  buildFilterBar();
 }
 
 function updateFilterCount() {
-  const counts = countByCategory(state.tree);
-  const presentCats = CAT_ORDER.filter(c => counts[c]);
-  const hiddenCount = presentCats.filter(c => !state.visibleCategories.has(c)).length;
+  const counts = countBySubtype(state.tree);
+  const allSubtypes = [];
+  for (const g of FILTER_GROUPS) for (const s of g.subtypes) if (counts[s.key]) allSubtypes.push(s.key);
+  const hiddenCount = allSubtypes.filter(k => !state.visibleSubtypes.has(k)).length;
   if (hiddenCount > 0) {
     filterActiveCount.textContent = `(${hiddenCount} hidden)`;
     filterActiveCount.classList.add('visible');
@@ -2854,12 +3220,13 @@ function updateFilterCount() {
 }
 
 function applyTreeFilter() {
-  // Show/hide all .tree-file items based on their category
+  // Show/hide all .tree-file items based on their subtype
   sidebarTreeWrap.querySelectorAll('.tree-file').forEach(row => {
-    const cat = row.dataset.category;
-    const hidden = cat && !state.visibleCategories.has(cat);
+    const subtype = row.dataset.subtype;
+    const hidden = subtype && !state.visibleSubtypes.has(subtype);
     row.toggleAttribute('data-cat-hidden', hidden);
   });
+  updateFilterCount();
 }
 
 // Filter header click → expand/collapse
@@ -2951,14 +3318,16 @@ function makeDirItem(dir, depth, defaultOpen) {
 
 function makeFileItem(file, depth) {
   const ft = getFileType(file.name);
+  const subtype = ft.subtype || 'unsupported';
   const row = document.createElement('div');
   row.className = 'tree-item tree-file';
   row.dataset.path = file.path;
-  row.dataset.category = ft.category;
+  row.dataset.category = ft.category;   // kept for backwards compatibility (enrichFileCard etc.)
+  row.dataset.subtype = subtype;
   row.style.paddingLeft = `${depth * 16 + 4}px`;
 
-  // Apply initial filter state
-  if (!state.visibleCategories.has(ft.category)) {
+  // Apply initial filter state (by subtype)
+  if (state.visibleSubtypes && !state.visibleSubtypes.has(subtype)) {
     row.setAttribute('data-cat-hidden', '');
   }
   // Apply show-all-files toggle: hide unsupported files when toggle is off
@@ -2969,10 +3338,10 @@ function makeFileItem(file, depth) {
   const spacer = document.createElement('span');
   spacer.className = 'tree-chevron-spacer';
 
-  // Coloured dot per category
+  // Coloured dot per subtype group colour
   const dot = document.createElement('span');
   dot.className = 'tree-icon';
-  const dotColor = (CAT_META[ft.category] || { color: '#374151' }).color;
+  const dotColor = subtypeColor(subtype);
   const dotOpacity = ft.category === 'unsupported' ? '0.4' : '0.8';
   dot.innerHTML = `<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="${dotColor}" opacity="${dotOpacity}"/></svg>`;
 
