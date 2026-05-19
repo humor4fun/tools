@@ -611,6 +611,10 @@
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1 4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h7a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1zm0 5a1 1 0 0 1 1-1h7a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1zm-5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1z"/></svg>
         <span class="tree-btn-label">Collapse all</span>
       </button>
+      <button id="btn-new-file" title="Create new file in current folder">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/></svg>
+        New file
+      </button>
       <button id="btn-change-folder">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.764c.958 0 1.76.56 2.311 1.184C8.17 3.71 8.692 4 9.5 4H13.5A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5z"/></svg>
         Change folder
@@ -866,6 +870,7 @@ const btnOpenWelcome   = $('btn-open-welcome');
 const btnChangeFolder  = $('btn-change-folder');
 const btnRefreshTree   = $('btn-refresh-tree');
 const btnCollapseAll   = $('btn-collapse-all');
+const btnNewFile       = $('btn-new-file');
 const sidebarWelcome   = $('sidebar-welcome');
 const treeFilter       = $('tree-filter');
 const filterHeader     = $('filter-header');
@@ -1021,6 +1026,56 @@ function revealInTree(path) {
 }
 
 btnReveal.addEventListener('click', () => revealInTree(state.currentPath));
+
+// ── New file ──────────────────────────────────────────────────────────────────
+async function createNewFile() {
+  if (!state.rootHandle) return;
+
+  // Determine target directory: prefer current dir view, else parent of open file.
+  let targetDirPath = '';
+  if (state.currentDirPath !== null && state.currentDirPath !== undefined) {
+    targetDirPath = state.currentDirPath;
+  } else if (state.currentPath) {
+    targetDirPath = state.currentPath.includes('/')
+      ? state.currentPath.split('/').slice(0, -1).join('/')
+      : '';
+  }
+
+  const dirLabel = targetDirPath === '' ? state.rootName : targetDirPath.split('/').pop();
+  const name = prompt(`New file name in "${dirLabel}":`);
+  if (!name || !name.trim()) return;
+  const trimmed = name.trim();
+
+  // Validate: no path separators, no leading dot.
+  if (trimmed.includes('/') || trimmed.includes('\\') || trimmed.startsWith('.')) {
+    showToast('Invalid file name.', { type: 'warn' });
+    return;
+  }
+
+  // Ensure write permission.
+  if (!state.writePermission) {
+    const perm = await state.rootHandle.requestPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') { showPermDenied(); return; }
+    state.writePermission = true;
+  }
+
+  try {
+    const dirHandle  = getDirHandle(targetDirPath);
+    const fileHandle = await dirHandle.getFileHandle(trimmed, { create: true });
+    const writable   = await fileHandle.createWritable();
+    await writable.write('');
+    await writable.close();
+
+    const newPath = targetDirPath ? `${targetDirPath}/${trimmed}` : trimmed;
+    await refreshTree();
+    openFile(newPath);
+    showToast(`Created "${trimmed}".`, { type: 'ok', duration: 3000 });
+  } catch (err) {
+    showToast(`Could not create file: ${err.message}`, { type: 'error', duration: 8000 });
+  }
+}
+
+btnNewFile.addEventListener('click', createNewFile);
 
 // ── Load folder ───────────────────────────────────────────────────────────────
 async function loadFolder(handle) {
