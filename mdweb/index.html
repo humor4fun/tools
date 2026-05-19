@@ -115,13 +115,13 @@
   #sidebar-welcome-hint { font-size: 11px; color: var(--text-dim); text-align: center; line-height: 1.6; }
 
   #sidebar-bottom { border-top: 1px solid var(--border-light); padding: 8px 10px; flex-shrink: 0; display: none; }
-  #sidebar-bottom.visible { display: block; }
-  #btn-change-folder {
+  #sidebar-bottom.visible { display: flex; flex-direction: column; gap: 2px; }
+  #btn-change-folder, #btn-refresh-tree {
     display: flex; align-items: center; gap: 6px; background: transparent; border: none;
     color: var(--text-dim); font-size: 11px; cursor: pointer; padding: 4px 6px;
     border-radius: 4px; width: 100%; transition: color 0.15s, background 0.15s;
   }
-  #btn-change-folder:hover { color: var(--text-muted); background: var(--bg-hover); }
+  #btn-change-folder:hover, #btn-refresh-tree:hover { color: var(--text-muted); background: var(--bg-hover); }
 
   /* ── Tree ─────────────────────────────────────────────────── */
   .tree-item {
@@ -560,6 +560,10 @@
 
     <div id="sidebar-tree-wrap" style="display:none"></div>
     <div id="sidebar-bottom">
+      <button id="btn-refresh-tree" title="Refresh file tree">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+        Refresh tree
+      </button>
       <button id="btn-change-folder">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.764c.958 0 1.76.56 2.311 1.184C8.17 3.71 8.692 4 9.5 4H13.5A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5z"/></svg>
         Change folder
@@ -801,12 +805,14 @@ const state = {
   // Filter: set of categories to SHOW
   visibleCategories: new Set(['markdown','html','code','text','viewable','unsupported']),
   _blobUrl:         null,   // object URL for current viewable file (revoked on nav)
+  watchInterval:    null,   // setInterval ID for auto file-tree refresh
 };
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const btnOpenWelcome   = $('btn-open-welcome');
 const btnChangeFolder  = $('btn-change-folder');
+const btnRefreshTree   = $('btn-refresh-tree');
 const sidebarWelcome   = $('sidebar-welcome');
 const treeFilter       = $('tree-filter');
 const filterHeader     = $('filter-header');
@@ -852,9 +858,11 @@ async function pickFolder() {
 }
 btnOpenWelcome.addEventListener('click', pickFolder);
 btnChangeFolder.addEventListener('click', pickFolder);
+btnRefreshTree.addEventListener('click', () => refreshTree());
 
 // ── Load folder ───────────────────────────────────────────────────────────────
 async function loadFolder(handle) {
+  stopWatching();
   state.rootHandle      = handle;
   state.rootName        = handle.name;
   state.editMode        = false;
@@ -879,6 +887,7 @@ async function loadFolder(handle) {
   renderTree(state.tree);
   buildFilterBar();
   treeFilter.classList.add('visible');
+  startWatching();
 
   // Priority: README.md → index.html → first file → folder view
   const readme  = findFile('README.md') || findFile('readme.md');
@@ -911,6 +920,108 @@ async function walkDir(dirHandle, node, prefix) {
       state.files.set(path, entry);
     }
   }
+}
+
+// ── File-tree refresh & watching ──────────────────────────────────────────────
+
+// Collect all paths from the current walk into a plain Set (no state mutation).
+async function collectPaths(dirHandle, prefix, out) {
+  for await (const e of dirHandle.values()) {
+    if (e.name.startsWith('.')) continue;
+    const path = prefix ? `${prefix}/${e.name}` : e.name;
+    if (e.kind === 'directory') {
+      out.add(path + '/');
+      await collectPaths(e, path, out);
+    } else {
+      out.add(path);
+    }
+  }
+}
+
+// Re-scan the directory tree and repaint the sidebar without touching the viewer.
+async function refreshTree() {
+  if (!state.rootHandle) return;
+
+  // Rebuild internal state from disk.
+  state.files.clear();
+  state.dirs.clear();
+  state.tree = { name: state.rootName, children: {}, files: [], path: '' };
+  await walkDir(state.rootHandle, state.tree, '');
+
+  // Repaint the sidebar.
+  renderTree(state.tree);
+  buildFilterBar();
+
+  // Restore active selection highlight without reloading content.
+  if (state.currentPath) {
+    const item = sidebarTreeWrap.querySelector(`[data-path="${CSS.escape(state.currentPath)}"]`);
+    if (item) {
+      item.classList.add('active');
+      item.scrollIntoView({ block: 'nearest' });
+    } else {
+      // The active file no longer exists — show a notice banner.
+      showDeletedFileBanner(state.currentPath);
+    }
+  }
+
+  // Restore dirty dot if applicable.
+  updateTreeDirtyState();
+}
+
+function showDeletedFileBanner(path) {
+  const filename = path.split('/').pop();
+  readerInner.className = '';
+  readerInner.innerHTML = `
+    <div class="notice-pane">
+      <div class="notice-pane-icon">⚠️</div>
+      <div class="notice-pane-title">File no longer found</div>
+      <div class="notice-pane-sub">
+        <strong>${escHtml(filename)}</strong> has been moved or deleted from the folder.<br>
+        Select another file from the sidebar.
+      </div>
+    </div>`;
+  hideAllPanels();
+  reader.style.display = 'block';
+  breadcrumb.classList.add('visible');
+  state.currentPath = null;
+}
+
+function stopWatching() {
+  if (state.watchInterval !== null) {
+    clearInterval(state.watchInterval);
+    state.watchInterval = null;
+  }
+}
+
+async function startWatching() {
+  stopWatching();
+  // Snapshot of known paths at the time watching starts.
+  let knownPaths = new Set(state.files.keys());
+  // Add directory paths too (with trailing slash).
+  for (const [p] of state.dirs) knownPaths.add(p + '/');
+
+  state.watchInterval = setInterval(async () => {
+    if (!state.rootHandle) { stopWatching(); return; }
+    try {
+      const current = new Set();
+      await collectPaths(state.rootHandle, '', current);
+
+      // Compare to known paths (files only, without trailing-slash dirs).
+      const currentFiles = new Set([...current].filter(p => !p.endsWith('/')));
+      const changed = knownPaths.size !== currentFiles.size ||
+                      [...currentFiles].some(p => !knownPaths.has(p)) ||
+                      [...knownPaths].some(p => !currentFiles.has(p));
+
+      if (changed) {
+        knownPaths = currentFiles;
+        await refreshTree();
+      }
+    } catch (e) {
+      // Permission may have been revoked; stop watching silently.
+      console.warn('mdweb watch error:', e);
+      stopWatching();
+    }
+  }, 10000);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
