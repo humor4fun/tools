@@ -2,7 +2,7 @@
 
 A single HTML file that turns any local folder of text files into a browsable, readable, and editable workspace — directly in the browser, with no server, no install, and no build step.
 
-Open `index.html`, pick a folder, and read, navigate, and edit files across a wide range of text formats.
+Open `index.html`, pick one or more folders, and read, navigate, and edit files across a wide range of text formats.
 
 ---
 
@@ -17,10 +17,10 @@ Open `index.html`, pick a folder, and read, navigate, and edit files across a wi
 ## Getting started
 
 1. Open `index.html` in Chrome or Edge
-2. Click **Open Folder** in the sidebar
+2. Click **Open Folder** in the sidebar (or the **+** button in the header)
 3. Select any local folder containing text files
 
-The tool scans the folder, builds a file tree in the sidebar, and opens `README.md` automatically if one is present. If not, it opens the first readable file found.
+The tool scans the folder, builds a file tree in the sidebar, and opens `README.md` automatically if one is present. Otherwise it opens the first readable file found.
 
 ---
 
@@ -46,7 +46,7 @@ After reloading your shell (`source ~/.zshrc`), typing `mdweb` in any directory 
 
 ## Supported file types
 
-Files are grouped into four categories. Each category has a distinct display mode and coloured label.
+Files are grouped into categories. Each category has a distinct display mode and coloured label.
 
 ### Markdown — rendered
 
@@ -54,32 +54,45 @@ Rendered as formatted HTML using GitHub-Flavored Markdown.
 
 `md` `mdx` `markdown`
 
-### HTML — live preview
+### Web — HTML / XML / CSS
 
-Rendered in a sandboxed iframe. JavaScript execution is disabled; only the visual layout is shown.
+| Type | Extensions | Display |
+|------|-----------|---------|
+| HTML | `html` `htm` | Sandboxed live iframe |
+| XML | `xml` | Syntax highlighted code |
+| CSS / Styles | `css` `scss` `less` | Syntax highlighted code |
 
-`html` `htm` `svg`
+### Images — viewer
+
+Displayed in a centred viewer panel. SVG files can also be edited in the textarea with live preview.
+
+`png` `jpg` `jpeg` `gif` `webp` `avif` `ico` `bmp` `svg` `pdf`
+
+### Video / Audio — native player
+
+`mp4` `webm` `ogv` `mov` `mp3` `ogg` `wav` `flac` `m4a`
 
 ### Code — syntax highlighted
 
-Displayed with full syntax highlighting via Prism.js with language autodetection. Prism loads language grammars on demand, so nearly any language is supported.
+Displayed with full syntax highlighting via Prism.js. Language grammars are loaded on demand.
 
 | Category | Extensions |
 |----------|-----------|
-| JavaScript / TypeScript | `js` `mjs` `cjs` `jsx` `ts` `tsx` |
-| Web styles | `css` `scss` `less` |
-| Data & config | `json` `jsonc` `yaml` `yml` `toml` `xml` |
-| Shell | `sh` `bash` `zsh` `fish` |
+| JavaScript | `js` `mjs` `cjs` `jsx` |
+| TypeScript | `ts` `tsx` |
 | Python | `py` |
+| Shell | `sh` `bash` `zsh` `fish` |
+| C / C++ | `c` `h` `cpp` `hpp` |
+| C# | `cs` |
+| Java / Kotlin | `java` `kt` |
+| Swift | `swift` |
 | Ruby | `rb` |
 | Go | `go` |
 | Rust | `rs` |
-| Java / JVM | `java` `kt` |
-| Swift | `swift` |
-| C family | `c` `cpp` `h` `hpp` `cs` |
 | PHP | `php` |
-| Query languages | `sql` `graphql` |
-| Build files | `Dockerfile` `Makefile` `makefile` |
+| SQL / GraphQL | `sql` `graphql` |
+| Data & config | `json` `jsonc` `yaml` `yml` `toml` |
+| Build files | `Dockerfile` `Makefile` |
 
 ### Text — plain
 
@@ -87,25 +100,53 @@ Displayed as plain monospace text, no highlighting.
 
 `txt` `log` `csv` `tsv` `ini` `cfg` `conf` `env` `gitignore` `gitattributes` `editorconfig`
 
-Also: `LICENSE` `LICENCE` `NOTICE` `AUTHORS` `CONTRIBUTING` `CHANGELOG` `CHANGES` `README` `TODO` `FIXME` `INSTALL` `COPYING` (extensionless).
+Also: `LICENSE` `LICENCE` `NOTICE` `AUTHORS` `CONTRIBUTING` `CHANGELOG` `CHANGES` `README` `TODO` `FIXME` `INSTALL` `COPYING` (extensionless filenames).
+
+### Unsupported — hex viewer
+
+All other binary or unrecognised files are shown as a "Cannot display" notice by default. Enable **Show all files** in the sidebar to reveal them in the tree; selecting one opens a hex dump viewer.
 
 ---
 
 ## Feature reference
 
+### Multiple workspaces
+
+mdweb supports opening multiple folders simultaneously, each as its own independent workspace.
+
+**Workspace tabs**
+The header bar shows one chip per open folder. Click a chip to switch to that workspace; the sidebar tree and content pane update immediately. The last-open file or directory in each workspace is remembered and restored when you switch back.
+
+**Adding a workspace**
+Click the **+** button at the end of the header tab bar (or use **Open Folder** / **Change folder** in the sidebar) to open another folder. Both can be open at the same time.
+
+**Closing a workspace**
+Hover over a tab chip to reveal an **×** button. Click it to close that workspace. If it was the last open workspace, the app returns to the welcome state.
+
+**Duplicate folder names**
+If two open folders share the same name (e.g. two different `src` directories), tabs are labelled `src` and `src (2)` to distinguish them.
+
+---
+
 ### Browsing and navigation
 
-**Folder picker**
-Click **Open Folder** in the sidebar to select a local directory. Before a folder is loaded the button is large and prominent. After loading it collapses to a small **Change folder** link at the bottom of the sidebar.
-
 **Sidebar file tree**
-The left sidebar shows the full directory tree of the selected folder. Directories expand and collapse; clicking them also opens the folder card view for that directory. Files show their full filename (including extension) with a small colour-coded dot indicating file type: blue for Markdown, green for HTML, purple for code, grey for text.
+The left sidebar shows the full directory tree of the active workspace. Directories expand and collapse; clicking them also opens the folder card view for that directory. Files show their filename with a small colour-coded dot indicating file type.
+
+**File type filter**
+A collapsible filter panel at the top of the sidebar lets you show or hide files by type group (Markdown, Web, Code, Text, Images, Video, Audio, Unsupported). The filter is hierarchical — click a group header to toggle the entire group, or expand it to toggle individual subtypes. A hidden-count badge appears next to the **Filter** label when any types are deselected.
+
+**Show all files**
+The **Show all files** button at the bottom of the sidebar reveals binary and unrecognised files in the tree (hidden by default). When active, selecting one of those files opens the hex viewer.
 
 **Folder card view**
-When a directory is selected the main panel shows a card grid of its contents. Subdirectories appear as folder cards with a file count. Files are grouped by category (Markdown, HTML, Code, Text) and shown as cards displaying the filename, a file type label badge, and a content snippet from the first lines of the file. Clicking any card opens it.
+When a directory is selected the main panel shows a card grid of its contents. Subdirectories appear as folder cards with a file count. Files are grouped by category and shown as cards displaying the filename, a file type badge, and a content snippet. Clicking any card opens it.
 
 **Clickable breadcrumb**
-The breadcrumb bar shows the full path of the current file or folder. Every segment except the current one is clickable. Clicking a directory segment opens the card view for that directory. Clicking the root name opens the root card view.
+The breadcrumb bar below the header shows the full path of the current file or folder within the active workspace. Every ancestor segment is clickable and navigates to the card view for that directory. The root name opens the root card view.
+
+**Find file**
+A search bar sits above the file tree. Typing filters the tree to show only files whose full path contains the search term. Matching parent directories are auto-expanded; non-matching items are hidden. Clear the input to restore the full tree.
 
 **Auto-open**
 When a folder is loaded, `README.md` is opened automatically if found. Otherwise the first readable file found alphabetically is opened.
@@ -115,35 +156,57 @@ Navigating away from a file with unsaved edits shows a confirmation dialog befor
 
 ---
 
+### Tree controls (sidebar bottom bar)
+
+| Button | Action |
+|--------|--------|
+| **Refresh tree** | Re-scans the folder from disk and repaints the sidebar |
+| **Collapse all** / **Expand all** | Collapses or expands all directories in the tree; label toggles |
+| **New file** | Prompts for a filename and creates a new empty file in the current directory |
+| **Show all files** / **Show text files** | Toggles visibility of binary / unsupported files in the tree |
+| **Change folder** | Opens another folder and adds it as a new workspace tab |
+
+**Auto-refresh**
+The tree is automatically re-scanned every 10 seconds. If any files or directories are added, removed, or renamed, the sidebar updates automatically. If the currently open file is deleted, a notice banner replaces the content pane.
+
+---
+
 ### Reading
 
 **Markdown rendering**
-Markdown files are rendered using GitHub-Flavored Markdown (GFM) via marked.js. Supported elements include headings, paragraphs, bold, italic, ordered and unordered lists, task lists, tables, fenced code blocks, inline code, blockquotes, horizontal rules, and links.
+Markdown files are rendered using GitHub-Flavored Markdown (GFM) via marked.js. Supported elements include headings, paragraphs, bold, italic, ordered and unordered lists, task lists (non-interactive), tables, fenced code blocks, inline code, blockquotes, horizontal rules, and links.
 
 **HTML preview**
-HTML files are displayed in a sandboxed `<iframe>`. The iframe uses `sandbox="allow-same-origin"` which prevents JavaScript execution, form submission, and navigation while still rendering the visual layout, styles, and images correctly.
+HTML files are displayed in a sandboxed `<iframe>`. The iframe uses `sandbox="allow-same-origin"` which prevents JavaScript execution while still rendering the visual layout, styles, and images.
+
+**SVG viewer + editor**
+SVG files are shown as rendered images in the viewer panel. They can be opened in the editor to edit the raw XML, with a live SVG preview pane in split view.
 
 **Syntax-highlighted code**
-Code files are displayed in a styled block with Prism.js syntax highlighting. The language grammar is detected from the file extension and loaded on demand by the Prism autoloader. The colour theme is tuned to the dark UI.
+Code files are displayed in a styled block with Prism.js syntax highlighting. The language grammar is detected from the file extension and loaded on demand.
 
 **Plain text**
 Text files are displayed in a scrollable monospace block. No processing is applied.
 
+**Images, video, audio, PDF**
+Media files open in the viewer panel using native browser rendering (`<img>`, `<video>`, `<audio>`, `<iframe>`). Images are centred and scaled to fit.
+
+**Hex viewer**
+Binary files (when **Show all files** is enabled) are displayed as a paged hex dump. Each page shows 64 KB of data in three columns: byte offset, hex bytes, and ASCII representation. An index panel on the left lists all pages; click any page to jump to it. Files larger than 10 MB show a size warning before loading; click through to load anyway.
+
 **File type badge**
-The toolbar shows a coloured label indicating the current file's type (e.g. `JavaScript`, `YAML`, `Markdown`, `HTML`).
+The toolbar shows a coloured label indicating the detected file type.
 
 **Markdown metadata strip**
-Markdown files that begin with an HTML comment block containing structured metadata fields are parsed and displayed as a badge row above the rendered content. The comment block is stripped from the rendered body.
-
-Recognised fields:
+Markdown files that begin with an HTML comment block containing structured metadata fields are parsed and displayed as a badge row above the rendered content.
 
 | Field | Rendered as |
 |-------|-------------|
-| `ARTIFACT: A1` through `B2` | Blue pill badge |
+| `ARTIFACT: A1 — Description` | Blue pill badge |
 | Program type: `PSIRT`, `AppSec`, `CSIRT`, `OSS` | Colour-coded pill badge |
-| Role text (rest of artifact description) | Grey pill badge |
+| Role text | Grey pill badge |
 | `Last updated: YYYY-MM-DD` | Muted date text |
-| `PRECEDENCE NOTE: ...` | Amber highlighted note |
+| `PRECEDENCE NOTE: ...` | Amber highlighted strip |
 
 **Internal link navigation**
 Relative links to other readable files in Markdown content are intercepted and navigate within the app. External links open in a new tab.
@@ -153,13 +216,16 @@ Relative links to other readable files in Markdown content are intercepted and n
 ### Editing
 
 **Entering edit mode**
-Click **Edit** in the toolbar. The rendered view is replaced by a monospace textarea containing the raw file content. The toolbar switches to show **Save** and **Cancel**.
+Click **Edit** in the toolbar. The rendered view is replaced by a monospace textarea with line numbers. The toolbar switches to show **Save** and **Cancel**.
 
-**Edit works for all file types**
-The textarea editor is available for every supported file type — Markdown, HTML, JavaScript, CSS, JSON, plain text, and all others. There is no file type that is read-only.
+**Supported file types**
+The editor is available for all text-based file types: Markdown, HTML, code files, plain text, and SVG. Image, video, audio, and PDF files cannot be edited in-app.
+
+**Line numbers**
+A gutter on the left side of the editor shows the line number for every row. Numbers scroll in sync with the editor.
 
 **Write permission**
-On the first **Edit** click in a session, the browser requests write permission for the selected folder. Granting it covers all files in that folder for the session. If denied, an amber message appears in the toolbar.
+On the first **Edit** click in a session, the browser requests write permission for the folder. Granting it covers all files in that folder for the session. If denied, an amber message appears in the toolbar.
 
 **Tab key**
 Inserts 2 spaces at the cursor position without losing focus.
@@ -177,7 +243,7 @@ A `●` dot appears before the filename in the breadcrumb and a blue dot appears
 ### Saving
 
 **Save button**
-The **Save** button is active (blue) when there are unsaved changes and dimmed when clean.
+The **Save** button is active (blue, labelled `● Save`) when there are unsaved changes and dimmed when clean.
 
 **Keyboard shortcut**
 `Cmd+S` (macOS) or `Ctrl+S` (Windows/Linux) saves the current file while in edit mode.
@@ -187,12 +253,29 @@ If the write fails, the button shows `⚠ Save failed` briefly. No edits are los
 
 ---
 
+### Toolbar actions
+
+| Button | Visible when | Action |
+|--------|-------------|--------|
+| **Wrap** | File open | Toggle line wrap for editor and code/text blocks |
+| **Split** | File open, not HTML | Toggle split editor + preview view |
+| **50/50** | Split view active | Reset split ratio to equal halves |
+| **Hex** | File open, read mode | Toggle hex dump view for the current file |
+| **Beautify** | File open, supported lang | Toggle a formatted view of the file (view only, file not changed) |
+| **Reveal** | File open, read mode | Expand ancestors in the tree, scroll the file row into view, and flash it |
+| **Reload** | File open, read mode | Re-read the file from disk and re-render |
+| **Edit** | File open, editable type | Enter edit mode |
+| **Cancel** | Edit mode | Exit edit mode (discard prompt if dirty) |
+| **Save** | Edit mode | Write changes to disk |
+
+---
+
 ### Split view
 
-Split view is available for all file types. The left pane is always the textarea editor. The right pane shows the live preview appropriate for the file type: rendered Markdown, a live HTML iframe, or syntax-highlighted code.
+Split view shows the editor and a live preview side by side.
 
-**Enabling split view**
-Click **Split** in the toolbar while in edit mode.
+**Enabling**
+Click **Split** in the toolbar. Split is not available for HTML files (the iframe preview is not synchronised).
 
 **Resizing**
 Drag the divider between panes. The editor can be sized between 20% and 80% of the total width.
@@ -201,19 +284,85 @@ Drag the divider between panes. The editor can be sized between 20% and 80% of t
 Click the **50/50** button (dims when already centred) or double-click the divider.
 
 **Live preview**
-The preview re-renders 300ms after each keystroke.
+The preview re-renders 300ms after each keystroke. SVG files show the rendered SVG directly; Markdown shows rendered HTML; code shows syntax-highlighted text.
 
 **Synchronized scrolling**
-Scrolling either pane drives the other proportionally. Applies to Markdown and code/text previews. Not applied to HTML iframes (iframes manage their own scroll independently).
+Scrolling either pane drives the other proportionally. Applies to Markdown, code, and text previews.
+
+---
+
+### Beautify (view-only format)
+
+The **Beautify** button formats the current file's content in the reader without modifying the file on disk. Toggling it off restores the original display.
+
+Supported languages: `json`, `xml`, `html`, `svg`, `javascript`, `jsx`, `typescript`, `tsx`, `css`, `scss`, `less`
+
+Beautify is not available in edit mode. The **Edit** button is dimmed while Beautify is active.
+
+---
+
+### Hex viewer
+
+Available for any file when **Show all files** is enabled in the sidebar.
+
+- Click **Hex** in the toolbar to enter hex view for the current file, or select any binary file from the tree
+- Files are shown in 64 KB pages with offset, hex byte, and ASCII columns
+- The left panel lists all pages; click any to jump to it
+- Files over 10 MB show a size warning; click through to proceed
+- Click **Hex** again to return to the normal view
 
 ---
 
 ### Line wrap toggle
 
-The **Wrap** button (visible in read and edit mode) toggles line wrapping. Applies to the textarea editor, code/text previews, and rendered code blocks in read mode. Does not affect Markdown rendered prose.
+The **Wrap** button toggles line wrapping for the editor textarea and code/text blocks.
 
 - **Wrap on (default):** long lines wrap within the pane
 - **Wrap off:** long lines scroll horizontally
+
+---
+
+### Reveal in tree
+
+The **Reveal** button in the toolbar scrolls the sidebar to the active file, expands all ancestor directories, and briefly flashes the file row to make it easy to locate.
+
+---
+
+### Activity log
+
+The **Log** button in the header toggles a collapsible panel on the right edge of the screen. The panel records a timestamped history of actions including:
+
+- Folders opened
+- Files opened
+- Files saved, created, and moved
+- Tree changes detected by auto-refresh
+- Files deleted or moved (detected by the watcher)
+- Write permission denied
+- Errors
+
+Each entry shows the local time (`HH:MM:SS`) and a message. Entries are prepended (newest first). Clickable entries (file-related events) highlight and scroll the relevant file in the sidebar tree. Use **Clear** to empty the log or **Save** to download it as a `.txt` file.
+
+---
+
+### Drag and drop
+
+**Open a folder from the OS**
+Drag a folder from the Finder (macOS) or File Explorer (Windows) onto the browser window. A full-screen overlay confirms the drop target. The folder opens as a new workspace tab.
+
+**Move files within the sidebar**
+Drag any file or folder row in the sidebar tree onto another directory row. The dragged item is moved into the target directory on disk and the tree refreshes. Dropping a file onto another file moves it to that file's parent directory. A toast notification confirms the move.
+
+---
+
+### New file
+
+Click **New file** at the bottom of the sidebar to create a new file in the current directory (the directory shown in the breadcrumb or last selected in the tree). A prompt asks for the filename. The file is created empty on disk, the tree refreshes, and the new file is opened automatically.
+
+---
+
+### Toast notifications
+
+Brief notifications slide in from the top-right corner for operations such as move success, move errors, and permission issues. Notifications are colour-coded: green for success, amber for warnings, red for errors. They dismiss automatically after 5 seconds.
 
 ---
 
@@ -222,22 +371,24 @@ The **Wrap** button (visible in read and edit mode) toggles line wrapping. Appli
 | Shortcut | Context | Action |
 |----------|---------|--------|
 | `Cmd+S` / `Ctrl+S` | Edit mode | Save current file |
-| `Escape` | Edit mode | Exit edit mode (confirms if unsaved) |
+| `Escape` | Edit mode | Exit edit mode (confirm if dirty) |
 | `Tab` | Edit mode, cursor in textarea | Insert 2 spaces |
 
 ---
 
 ## Implementation notes
 
-- **Single file.** All HTML, CSS, and JavaScript is contained in `index.html`. No companion files.
+- **Single file.** All HTML, CSS, and JavaScript is contained in `index.html`. No companion files, no build step.
 - **No framework.** Vanilla JS and CSS only.
 - **Two external dependencies:**
   - [marked.js](https://github.com/markedjs/marked) — Markdown parsing, loaded from jsDelivr
   - [Prism.js](https://github.com/PrismJS/prism) — syntax highlighting with autoloader, loaded from jsDelivr
 - **Fully offline after first load.** For permanent offline use, download both CDN scripts locally and update the `<script src>` tags to point to your local copies.
+- **Multi-workspace architecture.** Each open folder is a self-contained workspace object with its own file map, directory map, tree, write permission, watch interval, and saved navigation state.
+- **Auto-watch.** Each workspace runs an independent 10-second polling loop. Background workspaces silently re-scan; the sidebar only repaints when you switch to them.
 - **HTML preview security.** HTML files are rendered in a sandboxed iframe (`sandbox="allow-same-origin"`). JavaScript in the rendered HTML does not execute.
-- **File tree built once.** The directory tree is walked recursively at folder load time. Individual files are read on demand.
-- **Prism language autoloader.** Language grammars are fetched from jsDelivr on first use per language. After the first load of a language, it is cached by the browser.
+- **Files read on demand.** The directory tree is walked at folder load time, but file contents are read only when a file is opened.
+- **Prism language autoloader.** Language grammars are fetched from jsDelivr on first use per language and then cached by the browser.
 
 ---
 
