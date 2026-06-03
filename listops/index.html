@@ -52,7 +52,7 @@
   #app {
     display: grid;
     grid-template-columns: 1fr var(--sidebar-w);
-    grid-template-rows: var(--header-h) 1fr var(--statusbar-h);
+    grid-template-rows: var(--header-h) auto 1fr var(--statusbar-h);
     height: 100vh; width: 100vw;
   }
 
@@ -255,6 +255,63 @@
   }
   .prune-btn:hover { background: var(--bg-active); color: var(--text); border-color: var(--accent-blue); }
 
+  /* ── Stack-full warning banner ──────────────────────────────── */
+  #stack-warn-banner {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 14px; font-size: 12px;
+    background: #2d1f00; border-bottom: 1px solid #92400e;
+    color: #fbbf24; z-index: 9; flex-shrink: 0;
+    max-height: 40px; overflow: hidden;
+    transition: max-height 0.2s ease, padding 0.2s ease, border-bottom-width 0.2s ease;
+  }
+  #stack-warn-banner.hidden {
+    max-height: 0; padding-top: 0; padding-bottom: 0; border-bottom-width: 0;
+  }
+  #stack-warn-banner svg { flex-shrink: 0; opacity: 0.9; }
+  #stack-warn-msg { flex: 1; }
+  #stack-warn-dismiss {
+    background: none; border: none; color: #fbbf24; font-size: 16px;
+    cursor: pointer; padding: 0 4px; opacity: 0.7; line-height: 1;
+    transition: opacity 0.15s; flex-shrink: 0;
+  }
+  #stack-warn-dismiss:hover { opacity: 1; }
+
+  /* ── History sidebar section ─────────────────────────────────── */
+  #history-list {
+    height: 160px; overflow-y: auto; overflow-x: hidden;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    padding: 2px 0;
+  }
+  #history-list::-webkit-scrollbar { width: 4px; }
+  #history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .hist-entry {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 10px; font-size: 11.5px; cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: background 0.1s, color 0.1s;
+    user-select: none;
+  }
+  .hist-entry:hover { background: var(--bg-hover); }
+  .hist-entry.hist-current {
+    color: var(--text-heading); background: rgba(31,111,235,0.08);
+    border-left-color: var(--accent-blue); cursor: default; font-weight: 500;
+  }
+  .hist-entry.hist-current:hover { background: rgba(31,111,235,0.08); }
+  .hist-entry.hist-undo { color: var(--text-muted); }
+  .hist-entry.hist-undo:hover { color: var(--text); }
+  .hist-entry.hist-redo { color: var(--text-dim); font-style: italic; }
+  .hist-entry.hist-redo:hover { color: var(--text-muted); }
+  .hist-icon { flex-shrink: 0; font-size: 9px; width: 12px; text-align: center; }
+  .hist-empty {
+    padding: 12px 10px; font-size: 11px; color: var(--text-dim); font-style: italic;
+  }
+  #history-clear-btn {
+    background: none; border: none; color: var(--text-dim); font-size: 10px;
+    cursor: pointer; padding: 2px 6px; border-radius: 3px;
+    transition: color 0.15s, background 0.15s; line-height: 1.5;
+  }
+  #history-clear-btn:hover { color: #f85149; background: var(--bg-hover); }
+
   /* ── Toast ───────────────────────────────────────────────── */
   #toast {
     position: fixed; top: 14px; left: 50%; transform: translateX(-50%) translateY(-8px);
@@ -301,6 +358,13 @@
       </a>
     </div>
   </header>
+
+  <!-- ── Stack-full warning banner ──────────────────────────────── -->
+  <div id="stack-warn-banner" class="hidden" style="grid-column:1/-1">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/></svg>
+    <span id="stack-warn-msg"></span>
+    <button id="stack-warn-dismiss" aria-label="Dismiss warning">&#x2715;</button>
+  </div>
 
   <!-- ── Textarea ─────────────────────────────────────────────── -->
   <div id="editor-pane">
@@ -601,6 +665,22 @@
       </div>
     </div>
 
+    <!-- History -->
+    <div class="sb-section" id="sec-history">
+      <div class="sb-section-header" data-sec="history">
+        <span class="sb-section-title">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71z"/><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0"/></svg>
+          History
+        </span>
+        <button id="history-clear-btn" title="Clear history" onclick="event.stopPropagation()">Clear</button>
+      </div>
+      <div class="sb-section-body open" id="body-history">
+        <div id="history-list">
+          <div class="hist-empty">No history yet</div>
+        </div>
+      </div>
+    </div>
+
   </aside>
 
   <!-- ── Status bar ────────────────────────────────────────────── -->
@@ -658,7 +738,7 @@ function loadPrefs() {
     if (s.inSep  === 'custom') el('in-custom').classList.add('visible');
     if (s.outSep === 'custom') el('out-custom').classList.add('visible');
     // section collapse state
-    ['sort','items','case','clean','labels','prune','replace','file'].forEach(sec => {
+    ['sort','items','case','clean','labels','prune','replace','file','history'].forEach(sec => {
       if (s['sec_' + sec] === false) {
         el('body-' + sec).classList.remove('open');
         el('sec-' + sec).querySelector('.sb-chevron').classList.remove('open');
@@ -669,7 +749,7 @@ function loadPrefs() {
 function savePrefs() {
   try {
     const s = { stackMax, inSep, outSep, inCustom, outCustom };
-    ['sort','items','case','clean','labels','prune','replace','file'].forEach(sec => {
+    ['sort','items','case','clean','labels','prune','replace','file','history'].forEach(sec => {
       s['sec_' + sec] = el('body-' + sec).classList.contains('open');
     });
     localStorage.setItem('listops_prefs', JSON.stringify(s));
@@ -695,40 +775,184 @@ function updateStats() {
 }
 
 // ── Undo / Redo ────────────────────────────────────────────────
-function pushUndo(prevVal) {
+// Each stack entry: { val: string, label: string }
+// currentLabel describes what the current editor state represents.
+let currentLabel = 'Initial';
+
+function pushUndo(prevVal, label) {
   if (stackMax === 0) return;
-  undoStack.push(prevVal);
-  if (undoStack.length > stackMax) undoStack.shift();
+  // Warn when AT the limit (next push drops oldest)
+  if (undoStack.length >= stackMax) {
+    showStackWarn();
+    undoStack.shift(); // drop oldest to make room
+  }
+  undoStack.push({ val: prevVal, label: currentLabel });
+  currentLabel = label || 'Edit';
   redoStack = [];
   updateUndoButtons();
+  updateHistory();
 }
+
 function updateUndoButtons() {
   btnUndo.disabled = undoStack.length === 0;
   btnRedo.disabled = redoStack.length === 0;
 }
+
 btnUndo.addEventListener('click', () => {
   if (!undoStack.length) return;
-  redoStack.push(editor.value);
-  editor.value = undoStack.pop();
-  updateStats(); updateUndoButtons();
+  const entry = undoStack.pop();
+  redoStack.push({ val: editor.value, label: currentLabel });
+  editor.value = entry.val;
+  currentLabel = entry.label;
+  updateStats(); updateUndoButtons(); updateHistory();
 });
+
 btnRedo.addEventListener('click', () => {
   if (!redoStack.length) return;
-  undoStack.push(editor.value);
-  editor.value = redoStack.pop();
-  updateStats(); updateUndoButtons();
+  const entry = redoStack.pop();
+  undoStack.push({ val: editor.value, label: currentLabel });
+  editor.value = entry.val;
+  currentLabel = entry.label;
+  updateStats(); updateUndoButtons(); updateHistory();
 });
+
 stackInp.addEventListener('change', () => {
   let v = parseInt(stackInp.value, 10);
   if (isNaN(v) || v < 0) v = 0;
   if (v > 100) v = 100;
   stackInp.value = v;
+  const prevMax = stackMax;
   stackMax = v;
   // Trim stacks if needed
   while (undoStack.length > stackMax) undoStack.shift();
   while (redoStack.length > stackMax) redoStack.shift();
-  updateUndoButtons();
+  // If limit changed, reset the per-limit dismissal so banner can reappear when reached
+  if (v !== prevMax) clearStackWarnDismissal();
+  updateUndoButtons(); updateHistory();
   savePrefs();
+});
+
+// ── History list rendering ─────────────────────────────────────
+function updateHistory() {
+  const list = el('history-list');
+  list.innerHTML = '';
+
+  const totalEntries = undoStack.length + 1 + redoStack.length; // undo + current + redo
+  if (undoStack.length === 0 && redoStack.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'hist-empty';
+    empty.textContent = 'No history yet';
+    list.appendChild(empty);
+    return;
+  }
+
+  // Redo entries: redoStack[last] = most recently undone (shows first/top)
+  // redoStack[0] = oldest redo (shows last in redo section)
+  for (let i = redoStack.length - 1; i >= 0; i--) {
+    const entry = redoStack[i];
+    const row = document.createElement('div');
+    row.className = 'hist-entry hist-redo';
+    row.title = 'Click to redo to this state';
+    row.innerHTML = `<span class="hist-icon">↑</span><span>${escHtml(entry.label)}</span>`;
+    const idx = i; // redo entry index in redoStack (0 = oldest)
+    row.addEventListener('click', () => jumpToRedo(idx));
+    list.appendChild(row);
+  }
+
+  // Current state
+  const cur = document.createElement('div');
+  cur.className = 'hist-entry hist-current';
+  cur.innerHTML = `<span class="hist-icon">●</span><span>${escHtml(currentLabel)}</span>`;
+  list.appendChild(cur);
+  // Scroll current into view
+  requestAnimationFrame(() => cur.scrollIntoView({ block: 'nearest' }));
+
+  // Undo entries: undoStack[last] = most recent (shows first)
+  for (let i = undoStack.length - 1; i >= 0; i--) {
+    const entry = undoStack[i];
+    const row = document.createElement('div');
+    row.className = 'hist-entry hist-undo';
+    row.title = 'Click to undo to this state';
+    row.innerHTML = `<span class="hist-icon">↓</span><span>${escHtml(entry.label)}</span>`;
+    const idx = i; // position in undoStack (undoStack.length-1 = top/most recent)
+    row.addEventListener('click', () => jumpToUndo(idx));
+    list.appendChild(row);
+  }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Jump to undo entry at undoStack[idx] — apply consecutive undos from top down to idx
+function jumpToUndo(targetIdx) {
+  // Number of undos needed: from top (undoStack.length-1) down to targetIdx inclusive
+  const steps = undoStack.length - targetIdx;
+  for (let k = 0; k < steps; k++) {
+    const entry = undoStack.pop();
+    redoStack.push({ val: editor.value, label: currentLabel });
+    editor.value = entry.val;
+    currentLabel = entry.label;
+  }
+  updateStats(); updateUndoButtons(); updateHistory();
+}
+
+// Jump to redo entry at redoStack[targetIdx] — apply consecutive redos from top down to targetIdx
+function jumpToRedo(targetIdx) {
+  // redoStack[last] = most recent undo. We need to redo from top down to targetIdx
+  const steps = redoStack.length - targetIdx;
+  for (let k = 0; k < steps; k++) {
+    const entry = redoStack.pop();
+    undoStack.push({ val: editor.value, label: currentLabel });
+    editor.value = entry.val;
+    currentLabel = entry.label;
+  }
+  updateStats(); updateUndoButtons(); updateHistory();
+}
+
+el('history-clear-btn').addEventListener('click', () => {
+  undoStack = []; redoStack = [];
+  currentLabel = 'Initial';
+  updateUndoButtons(); updateHistory();
+});
+
+// ── Stack-full warning banner ─────────────────────────────────
+const WARN_KEY      = 'listops_stackwarn';
+const WARN_EXPIRY   = 86400000; // 24 hours in ms
+
+function getWarnState() {
+  try { return JSON.parse(localStorage.getItem(WARN_KEY) || '{}'); } catch { return {}; }
+}
+function clearStackWarnDismissal() {
+  try {
+    const s = getWarnState();
+    delete s.dismissed;
+    delete s.dismissedLimit;
+    localStorage.setItem(WARN_KEY, JSON.stringify(s));
+  } catch {}
+}
+
+function showStackWarn() {
+  if (stackMax === 0) return;
+  const s = getWarnState();
+  // If dismissed within 24h AND for the same limit, don't show
+  if (s.dismissed && s.dismissedLimit === stackMax) {
+    if (Date.now() - s.dismissed < WARN_EXPIRY) return;
+  }
+  const banner = el('stack-warn-banner');
+  el('stack-warn-msg').textContent =
+    `Stack full (${stackMax}/${stackMax}) — increase the limit in the status bar to keep more history`;
+  banner.classList.remove('hidden');
+}
+
+el('stack-warn-dismiss').addEventListener('click', () => {
+  el('stack-warn-banner').classList.add('hidden');
+  try {
+    const s = getWarnState();
+    s.dismissed = Date.now();
+    s.dismissedLimit = stackMax;
+    localStorage.setItem(WARN_KEY, JSON.stringify(s));
+  } catch {}
 });
 
 // ── Separators ─────────────────────────────────────────────────
@@ -787,7 +1011,7 @@ document.querySelectorAll('#out-pills .sep-pill').forEach(pill => {
     const outChar = getSepChar(newOutSep, newOutCustom);
     if (inChar !== outChar) {
       const prev = editor.value;
-      pushUndo(prev);
+      pushUndo(prev, 'Change separator');
       const items = splitByChar(prev, inChar);
       editor.value = items.join(outChar);
     }
@@ -821,19 +1045,19 @@ function joinItems(items) {
   return items.join(outChar);
 }
 
-function applyTransform(fn) {
+function applyTransform(fn, label) {
   const prev = editor.value;
-  pushUndo(prev);
+  pushUndo(prev, label || 'Edit');
   editor.value = fn(prev);
-  updateStats(); updateUndoButtons();
+  updateStats(); updateUndoButtons(); updateHistory();
 }
 
-function applyItemTransform(fn) {
+function applyItemTransform(fn, label) {
   const prev = editor.value;
-  pushUndo(prev);
+  pushUndo(prev, label || 'Edit');
   const items = splitItems(prev);
   editor.value = joinItems(fn(items));
-  updateStats(); updateUndoButtons();
+  updateStats(); updateUndoButtons(); updateHistory();
 }
 
 // ── Sort helpers ───────────────────────────────────────────────
@@ -1002,21 +1226,20 @@ function getSelectionLines() {
   return { start, end: lineEnd, text: value.slice(start, lineEnd) };
 }
 
-function applyLabelTransform(fn) {
+function applyLabelTransform(fn, label) {
   const sel = getSelectionLines();
   const prev = editor.value;
-  pushUndo(prev);
+  pushUndo(prev, label || 'Add labels');
   if (sel) {
     const lines = sel.text.split('\n');
     const transformed = fn(lines).join('\n');
     editor.value = prev.slice(0, sel.start) + transformed + prev.slice(sel.end);
-    // Restore selection
     editor.setSelectionRange(sel.start, sel.start + transformed.length);
   } else {
     const lines = editor.value.split('\n');
     editor.value = fn(lines).join('\n');
   }
-  updateStats(); updateUndoButtons();
+  updateStats(); updateUndoButtons(); updateHistory();
 }
 
 // ── Label apply handlers ───────────────────────────────────────
@@ -1035,7 +1258,7 @@ el('btn-apply-changing-label').addEventListener('click', () => {
   applyLabelTransform(lines => lines.map(line => {
     const lbl = nextLabel();
     return pos === 'prefix' ? lbl + sepChar + line : line + sepChar + lbl;
-  }));
+  }), 'Add labels');
   toast('Labels applied', 'ok');
 });
 
@@ -1046,7 +1269,7 @@ el('btn-apply-static-label').addEventListener('click', () => {
   if (!labelText) { toast('Enter label text first', 'warn'); return; }
   applyLabelTransform(lines => lines.map(line =>
     pos === 'prefix' ? labelText + sepChar + line : line + sepChar + labelText
-  ));
+  ), 'Add labels');
   toast('Labels applied', 'ok');
 });
 
@@ -1057,7 +1280,7 @@ el('btn-prune-start').addEventListener('click', () => {
   applyItemTransform(items => items.map(item => {
     const idx = item.indexOf(trigger);
     return idx === -1 ? item : item.slice(idx + trigger.length);
-  }));
+  }), 'Prune from start');
   toast('Pruned from start', 'ok');
 });
 el('btn-prune-end').addEventListener('click', () => {
@@ -1066,7 +1289,7 @@ el('btn-prune-end').addEventListener('click', () => {
   applyItemTransform(items => items.map(item => {
     const idx = item.indexOf(trigger);
     return idx === -1 ? item : item.slice(0, idx);
-  }));
+  }), 'Prune from end');
   toast('Pruned from end', 'ok');
 });
 
@@ -1082,7 +1305,7 @@ el('btn-replace').addEventListener('click', () => {
       return text.replace(re, repl);
     }
     return text.split(find).join(repl);
-  });
+  }, 'Replace');
   toast('Replaced', 'ok');
 });
 
@@ -1093,9 +1316,9 @@ el('file-input').addEventListener('change', e => {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    pushUndo(editor.value);
+    pushUndo(editor.value, 'Load file');
     editor.value = ev.target.result;
-    updateStats(); updateUndoButtons();
+    updateStats(); updateUndoButtons(); updateHistory();
     toast('Loaded: ' + file.name, 'ok');
   };
   reader.readAsText(file);
@@ -1136,72 +1359,72 @@ function runOp(op) {
   switch (op) {
 
     case 'sort-az':
-      applyItemTransform(items => [...items].sort(collate));
+      applyItemTransform(items => [...items].sort(collate), 'Sort A→Z');
       break;
     case 'sort-za':
-      applyItemTransform(items => [...items].sort((a,b) => collate(b,a)));
+      applyItemTransform(items => [...items].sort((a,b) => collate(b,a)), 'Sort Z→A');
       break;
     case 'sort-names':
       applyItemTransform(items => [...items].sort((a,b) =>
         collate(getLastName(a), getLastName(b))
-      ));
+      ), 'Sort by last name');
       break;
     case 'sort-titles':
       applyItemTransform(items => [...items].sort((a,b) => {
         const clean = s => s.trim().replace(TITLE_IGNORE, '').toLowerCase();
         return collate(clean(a), clean(b));
-      }));
+      }), 'Sort by title');
       break;
     case 'sort-email':
       applyItemTransform(items => [...items].sort((a,b) =>
         collate(getEmailDomain(a), getEmailDomain(b))
-      ));
+      ), 'Sort by email domain');
       break;
     case 'sort-href':
       applyItemTransform(items => [...items].sort((a,b) =>
         collate(getHrefText(a), getHrefText(b))
-      ));
+      ), 'Sort by link text');
       break;
     case 'sort-ignore-first':
       applyItemTransform(items => [...items].sort((a,b) => {
         const rest = s => s.trim().split(/\s+/).slice(1).join(' ').toLowerCase();
         return collate(rest(a), rest(b));
-      }));
+      }), 'Sort, ignore 1st word');
       break;
     case 'sort-addresses':
-      applyTransform(text => sortAddresses(text));
+      applyTransform(text => sortAddresses(text), 'Sort addresses');
       break;
     case 'sort-numeric':
       applyItemTransform(items => [...items].sort((a,b) =>
         getNumericVal(a) - getNumericVal(b)
-      ));
+      ), 'Sort numeric');
       break;
     case 'sort-dow':
       applyItemTransform(items => [...items].sort((a,b) =>
         getDayIndex(a) - getDayIndex(b)
-      ));
+      ), 'Sort by day');
       break;
     case 'sort-month':
       applyItemTransform(items => [...items].sort((a,b) => {
         const mi = getMonthIndex(a) - getMonthIndex(b);
         return mi !== 0 ? mi : getDayNum(a) - getDayNum(b);
-      }));
+      }), 'Sort by month');
       break;
     case 'sort-length':
-      applyItemTransform(items => [...items].sort((a,b) => a.length - b.length));
+      applyItemTransform(items => [...items].sort((a,b) => a.length - b.length), 'Sort by length');
       break;
     case 'sort-random':
-      applyItemTransform(items => shuffle([...items]));
+      applyItemTransform(items => shuffle([...items]), 'Shuffle');
       break;
     case 'sort-reverse-list':
-      applyItemTransform(items => [...items].reverse());
+      applyItemTransform(items => [...items].reverse(), 'Reverse');
       break;
 
     case 'mirror-items':
-      applyItemTransform(items => items.map(s => s.split('').reverse().join('')));
+      applyItemTransform(items => items.map(s => s.split('').reverse().join('')), 'Mirror items');
       break;
     case 'reverse-words':
-      applyItemTransform(items => items.map(s => s.split(/(\s+)/).reverse().join('')));
+      applyItemTransform(items => items.map(s => s.split(/(\s+)/).reverse().join('')), 'Reverse words');
       break;
     case 'transpose': {
       const lines = editor.value.split('\n').filter(l => l.trim() !== '');
@@ -1212,35 +1435,35 @@ function runOp(op) {
       for (let c = 0; c < cols; c++) {
         result.push(rows.map(r => (r[c] || '').trimEnd()).join('\t'));
       }
-      pushUndo(editor.value);
+      pushUndo(editor.value, 'Transpose');
       editor.value = result.join('\n');
-      updateStats(); updateUndoButtons();
+      updateStats(); updateUndoButtons(); updateHistory();
       break;
     }
 
     case 'case-lower':
-      applyTransform(t => t.toLowerCase());
+      applyTransform(t => t.toLowerCase(), 'Lowercase');
       break;
     case 'case-upper':
-      applyTransform(t => t.toUpperCase());
+      applyTransform(t => t.toUpperCase(), 'Uppercase');
       break;
     case 'case-title': {
       const skip = new Set(['a','an','the','and','but','for','nor','or','of','with','to','in','on','de','le','la','au']);
       applyTransform(t => t.replace(/\b\w+/g, (w, offset) => {
         if (offset > 0 && skip.has(w.toLowerCase())) return w.toLowerCase();
         return w[0].toUpperCase() + w.slice(1).toLowerCase();
-      }));
+      }), 'Title case');
       break;
     }
     case 'case-random':
       applyTransform(t => t.split('').map(c =>
         Math.random() < 0.5 ? c.toUpperCase() : c.toLowerCase()
-      ).join(''));
+      ).join(''), 'Random case');
       break;
     case 'case-capitalize':
       applyItemTransform(items => items.map(s =>
         s.length === 0 ? s : s[0].toUpperCase() + s.slice(1)
-      ));
+      ), 'Capitalize');
       break;
 
     case 'remove-dupes': {
@@ -1248,31 +1471,29 @@ function runOp(op) {
       applyItemTransform(items => items.filter(item => {
         if (seen.has(item)) return false;
         seen.add(item); return true;
-      }));
+      }), 'Remove duplicates');
       break;
     }
     case 'trim-spaces':
-      applyItemTransform(items => items.map(s => s.trim()));
+      applyItemTransform(items => items.map(s => s.trim()), 'Trim spaces');
       break;
     case 'remove-whitespace':
-      applyTransform(t => t.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim());
+      applyTransform(t => t.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim(), 'Remove extra whitespace');
       break;
     case 'remove-linebreaks':
-      applyTransform(t => t.replace(/\n+/g, ' ').trim());
+      applyTransform(t => t.replace(/\n+/g, ' ').trim(), 'Remove line breaks');
       break;
     case 'remove-linebreaks-paras':
       applyTransform(t => {
-        // Split on double newlines (paragraph boundaries), then join single newlines within paras
         return t.split(/\n\s*\n/).map(para =>
           para.replace(/\n/g, ' ').trim()
         ).join('\n\n');
-      });
+      }, 'Remove line breaks (keep paras)');
       break;
     case 'remove-nonalpha': {
-      // Act on items, not separators
       applyItemTransform(items => items.map(s =>
         s.replace(/[^A-Za-z0-9 ]/g, '')
-      ));
+      ), 'Remove non-alphanumeric');
       break;
     }
 
@@ -1299,6 +1520,7 @@ editor.addEventListener('keydown', e => {
 loadPrefs();
 updateStats();
 updateUndoButtons();
+updateHistory();
 </script>
 </body>
 </html>
