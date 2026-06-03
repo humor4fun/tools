@@ -73,6 +73,18 @@ input[type=range]{flex:1;-webkit-appearance:none;height:4px;border-radius:2px;ba
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer}
 .sval{font-size:11px;font-family:var(--font-mono);color:var(--text-dim);min-width:40px;text-align:right}
 
+/* EC slider */
+.ec-slider-wrap{position:relative;padding-bottom:32px;margin-bottom:2px}
+.ec-slider-wrap input[type=range]{width:100%;display:block}
+.ec-nodes{position:absolute;top:5px;left:7px;right:7px;pointer-events:none}
+.ec-node{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--bg-sidebar);border:2px solid var(--border);transform:translate(-50%,-50%);top:50%}
+.ec-ticks{position:absolute;bottom:0;left:0;right:0}
+.ec-tick{position:absolute;transform:translateX(-50%);font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-dim);text-align:center;line-height:1.3;transition:color .15s;cursor:pointer;user-select:none}
+.ec-tick:first-child{transform:translateX(-2px)}
+.ec-tick:last-child{transform:translateX(calc(-100% + 2px))}
+.ec-tick.active{color:var(--accent)}
+.ec-pct{font-size:9px;font-weight:400;font-family:var(--font-mono)}
+
 .trow{display:flex;align-items:center;gap:8px}
 .tog{position:relative;width:32px;height:18px;flex-shrink:0}
 .tog input{opacity:0;width:0;height:0;position:absolute}
@@ -167,11 +179,20 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
       <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
     </div>
     <div class="sb-body">
-      <div class="pills" id="ec-pills">
-        <button class="pill" data-ec="L">L · 7%</button>
-        <button class="pill active" data-ec="M">M · 15%</button>
-        <button class="pill" data-ec="Q">Q · 25%</button>
-        <button class="pill" data-ec="H">H · 30%</button>
+      <div class="ec-slider-wrap">
+        <input type="range" id="ec-slider" min="0" max="100" value="33" step="1">
+        <div class="ec-nodes">
+          <span class="ec-node" style="left:0%"></span>
+          <span class="ec-node" style="left:33.33%"></span>
+          <span class="ec-node" style="left:66.67%"></span>
+          <span class="ec-node" style="left:100%"></span>
+        </div>
+        <div class="ec-ticks">
+          <span class="ec-tick" data-ec="L" style="left:0%">L<br><span class="ec-pct">7%</span></span>
+          <span class="ec-tick active" data-ec="M" style="left:33.33%">M<br><span class="ec-pct">15%</span></span>
+          <span class="ec-tick" data-ec="Q" style="left:66.67%">Q<br><span class="ec-pct">25%</span></span>
+          <span class="ec-tick" data-ec="H" style="left:100%">H<br><span class="ec-pct">30%</span></span>
+        </div>
       </div>
       <div class="hint" id="ec-hint">Higher = more scannable if partially obscured</div>
     </div>
@@ -1367,14 +1388,39 @@ document.querySelectorAll('#type-pills .pill').forEach(p => {
   });
 });
 
-// EC pills
-document.querySelectorAll('#ec-pills .pill').forEach(p => {
-  p.addEventListener('click', () => {
-    document.querySelectorAll('#ec-pills .pill').forEach(x => x.classList.remove('active'));
-    p.classList.add('active');
-    curEC = p.dataset.ec;
-    updateECWarn();
-    scheduleRender();
+// EC slider
+const EC_STOPS = [
+  { val: 0,   ec: 'L' },
+  { val: 33,  ec: 'M' },
+  { val: 67,  ec: 'Q' },
+  { val: 100, ec: 'H' },
+];
+function ecStopByVal(v) {
+  return EC_STOPS.reduce((a, b) => Math.abs(b.val - v) < Math.abs(a.val - v) ? b : a);
+}
+function setECStop(stop) {
+  const ecSlider = document.getElementById('ec-slider');
+  ecSlider.value = stop.val;
+  curEC = stop.ec;
+  document.querySelectorAll('.ec-tick').forEach(t =>
+    t.classList.toggle('active', t.dataset.ec === curEC)
+  );
+}
+document.getElementById('ec-slider').addEventListener('input', function() {
+  const stop = ecStopByVal(+this.value);
+  this.value = stop.val;
+  curEC = stop.ec;
+  document.querySelectorAll('.ec-tick').forEach(t =>
+    t.classList.toggle('active', t.dataset.ec === curEC)
+  );
+  updateECWarn();
+  scheduleRender();
+});
+// Click on tick label snaps slider
+document.querySelectorAll('.ec-tick').forEach(tick => {
+  tick.addEventListener('click', () => {
+    const stop = EC_STOPS.find(s => s.ec === tick.dataset.ec);
+    if (stop) { setECStop(stop); updateECWarn(); scheduleRender(); }
   });
 });
 
