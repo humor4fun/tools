@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tools-bluejar",
+  "compatibility_date": "2026-06-03",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": ".",
+    "exclude": [
+      ".git/**",
+      ".gitignore",
+      ".gitattributes",
+      ".DS_Store",
+      "wrangler.jsonc",
+      "LICENSE",
+      "README.md",
+      "*/README.md"
+    ]
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}
