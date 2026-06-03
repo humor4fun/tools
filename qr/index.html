@@ -1214,6 +1214,8 @@ function generateDataMatrix(text) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 let centerImg = null;
+let centerImgDataUrl = null;   // base64 data URL — persisted in localStorage
+let centerImgName = '';         // original filename — for the UI label
 
 function renderQR(canvas, matrix, size, opts) {
   const px = Math.max(1, Math.floor(opts.outSize / (size + 2 * opts.quietZone)));
@@ -1386,7 +1388,9 @@ function getTabState() {
     markerStyle: curMarker,
     imgSize: parseInt(imgSizeEl.value),
     imgPad: parseInt(imgPadEl.value),
-    collapsedSections: [...document.querySelectorAll('.sb-sec.collapsed')].map(el => el.id)
+    collapsedSections: [...document.querySelectorAll('.sb-sec.collapsed')].map(el => el.id),
+    centerImgDataUrl: centerImgDataUrl || null,
+    centerImgName:    centerImgName || ''
   };
 }
 
@@ -1439,11 +1443,33 @@ function applyTabState(tab) {
   // Collapsed sections
   document.querySelectorAll('.sb-sec').forEach(sec =>
     sec.classList.toggle('collapsed', (tab.collapsedSections || []).includes(sec.id)));
-  // Center image: always reset (cannot persist binary data in localStorage)
-  centerImg = null;
-  imgThumb.style.display = 'none';
-  imgOpts.style.display = 'none';
-  imgName.textContent = '';
+  // Center image: restore from persisted data URL, or wipe if absent
+  if (tab.centerImgDataUrl) {
+    const img = new Image();
+    img.onload = () => {
+      centerImg = img;
+      centerImgDataUrl = tab.centerImgDataUrl;
+      centerImgName = tab.centerImgName || '';
+      imgThumb.src = tab.centerImgDataUrl;
+      imgThumb.style.display = 'block';
+      imgOpts.style.display = 'flex';
+      imgName.textContent = tab.centerImgName || '';
+      updateECWarn();
+      scheduleRender();
+    };
+    img.onerror = () => {
+      centerImg = null; centerImgDataUrl = null; centerImgName = '';
+      imgThumb.style.display = 'none';
+      imgOpts.style.display = 'none';
+      imgName.textContent = '';
+    };
+    img.src = tab.centerImgDataUrl;
+  } else {
+    centerImg = null; centerImgDataUrl = null; centerImgName = '';
+    imgThumb.style.display = 'none';
+    imgOpts.style.display = 'none';
+    imgName.textContent = '';
+  }
   updateECWarn();
   scheduleRender();
 }
@@ -1758,6 +1784,8 @@ imgDrop.addEventListener('drop', e => {
 imgFile.addEventListener('change', () => { if (imgFile.files[0]) loadCenterImg(imgFile.files[0]); });
 document.getElementById('img-clear').addEventListener('click', () => {
   centerImg = null;
+  centerImgDataUrl = null;
+  centerImgName = '';
   imgThumb.style.display = 'none';
   imgOpts.style.display = 'none';
   imgName.textContent = '';
@@ -1766,18 +1794,24 @@ document.getElementById('img-clear').addEventListener('click', () => {
 });
 
 function loadCenterImg(file) {
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.onload = () => {
-    centerImg = img;
-    imgThumb.src = url;
-    imgThumb.style.display = 'block';
-    imgOpts.style.display = 'flex';
-    imgName.textContent = file.name;
-    updateECWarn();
-    scheduleRender();
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    const img = new Image();
+    img.onload = () => {
+      centerImg = img;
+      centerImgDataUrl = dataUrl;
+      centerImgName = file.name;
+      imgThumb.src = dataUrl;
+      imgThumb.style.display = 'block';
+      imgOpts.style.display = 'flex';
+      imgName.textContent = file.name;
+      updateECWarn();
+      scheduleRender();   // auto-saves via scheduleRender → persistTabs
+    };
+    img.src = dataUrl;
   };
-  img.src = url;
+  reader.readAsDataURL(file);
 }
 
 // Export
