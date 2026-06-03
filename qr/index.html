@@ -4,48 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>QR Code Generator · tools.bluejar.org</title>
+<link rel="stylesheet" href="../utils/tokens.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0f1117;--bg-sidebar:#161b27;--bg-input:#1c2232;--bg-hover:#1f2637;
-  --border:#2a3448;--border-light:#1e2a3d;
-  --accent:#1f6feb;--accent-h:#388bfd;
-  --text:#c9d1d9;--text-dim:#6e7681;--text-heading:#e6edf3;
-  --font-mono:'JetBrains Mono','Fira Mono','Cascadia Code',monospace;
-  --font-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  --hdr:44px;--sw:290px;--stbar:28px;--r:6px;
+  --bg-input:#1c2232;
+  --bg-hover:#1f2637;
+  --hdr:44px;--sw:290px;--stbar:28px;
 }
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-ui);font-size:13px}
 #app{display:grid;grid-template-columns:var(--sw) 1fr;grid-template-rows:var(--hdr) 1fr var(--stbar);height:100vh}
 
-header{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:0 16px;
-  background:var(--bg-sidebar);border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:13px}
-#hdr-logo{text-decoration:none;color:var(--text-heading);font-weight:600;display:flex;align-items:center;gap:6px}
-.hdr-sep{color:var(--border);font-size:16px}
-#hdr-title{color:var(--text-heading);font-weight:600}
-#tab-bar{display:flex;align-items:center;gap:4px;flex:1;overflow-x:auto;padding:0 8px;
-  scrollbar-width:none;min-width:0}
-#tab-bar::-webkit-scrollbar{display:none}
-.path-chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--text-dim);
-  background:var(--bg-hover);border:1px solid var(--border);border-radius:var(--r);
-  font-family:var(--font-mono);white-space:nowrap;flex-shrink:0;padding:2px 4px 2px 8px;
-  transition:color .15s,background .15s,border-color .15s}
-.path-chip:hover{color:var(--text);background:rgba(31,111,235,.12);border-color:var(--accent)}
-.path-chip.active{color:var(--text-heading);border-color:var(--accent);background:rgba(31,111,235,.18)}
-.ws-chip-label{cursor:pointer;max-width:160px;overflow:hidden;text-overflow:ellipsis}
-.ws-chip-close{display:inline-flex;align-items:center;justify-content:center;background:none;
-  border:none;color:var(--text-dim);cursor:pointer;font-size:13px;line-height:1;padding:0 2px;
-  border-radius:3px;opacity:0;transition:opacity .15s,color .15s}
-.path-chip:hover .ws-chip-close{opacity:1}
-.ws-chip-close:hover{color:#f87171}
-.ws-chip-add{display:inline-flex;align-items:center;justify-content:center;background:none;
-  border:1px solid var(--border);border-radius:var(--r);color:var(--text-dim);cursor:pointer;
-  font-size:14px;line-height:1;padding:1px 7px;height:24px;flex-shrink:0;
-  transition:color .15s,background .15s,border-color .15s}
-.ws-chip-add:hover{color:var(--text);background:var(--bg-hover);border-color:var(--accent)}
-#hdr-gh{display:flex;align-items:center;gap:5px;color:var(--text-dim);text-decoration:none;
-  font-size:12px;padding:4px 8px;border-radius:var(--r);border:1px solid var(--border)}
-#hdr-gh:hover{color:var(--text);border-color:var(--accent)}
+
 
 aside{background:var(--bg-sidebar);border-right:1px solid var(--border);overflow-y:auto;overflow-x:hidden}
 main{display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;background:var(--bg)}
@@ -55,25 +25,13 @@ main{display:flex;align-items:center;justify-content:center;overflow:auto;paddin
 .st-sep{opacity:.3}
 
 #preview-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:100%}
-#code-name-row{width:100%;max-width:min(100%,600px)}
-#code-name{width:100%;background:transparent;border:none;border-bottom:1px solid var(--border);
-  border-radius:0;font-size:15px;font-family:var(--font-mono);color:var(--text-heading);
-  font-weight:600;padding:4px 2px 6px;text-align:center;letter-spacing:.02em;outline:none;resize:none}
-#code-name:focus{border-bottom-color:var(--accent)}
-#code-name::placeholder{color:var(--text-dim);font-weight:400}
+
 #preview-canvas{max-width:min(100%,600px);max-height:calc(100vh - var(--hdr) - var(--stbar) - 48px);
   object-fit:contain;border-radius:var(--r);box-shadow:0 4px 24px rgba(0,0,0,.5)}
 #preview-err{color:#f87171;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);
   border-radius:var(--r);padding:10px 16px;font-size:12px;max-width:480px;text-align:center;display:none}
 
-.sb-sec{border-bottom:1px solid var(--border-light)}
-.sb-hdr{display:flex;align-items:center;gap:6px;padding:10px 14px;cursor:pointer;user-select:none;
-  font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-dim)}
-.sb-hdr:hover{color:var(--text);background:var(--bg-hover)}
-.chevron{margin-left:auto;transition:transform .15s}
-.sb-sec.collapsed .chevron{transform:rotate(-90deg)}
 .sb-body{padding:10px 14px 12px;display:flex;flex-direction:column;gap:10px}
-.sb-sec.collapsed .sb-body{display:none}
 
 .clabel{font-size:11px;color:var(--text-dim);margin-bottom:3px;display:block}
 .crow{display:flex;flex-direction:column;gap:3px}
@@ -143,37 +101,25 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
   cursor:pointer;color:var(--text-dim);font-size:11px;transition:all .1s}
 #swap-btn:hover{color:var(--text);border-color:var(--accent)}
 </style>
+<script src="../utils/sidebar.js"></script>
+<script src="../utils/tabs.js"></script>
+<script src="../utils/header.js"></script>
 </head>
 <body>
 <div id="app">
 
-<header>
-  <a id="hdr-logo" href="/">
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="1" y="1" width="6" height="6" rx="1" fill="#58a6ff" opacity=".8"/>
-      <rect x="9" y="1" width="6" height="6" rx="1" fill="#58a6ff" opacity=".5"/>
-      <rect x="1" y="9" width="6" height="6" rx="1" fill="#58a6ff" opacity=".5"/>
-      <rect x="9" y="9" width="6" height="6" rx="1" fill="#58a6ff" opacity=".3"/>
-    </svg>
-    tools
-  </a>
-  <span class="hdr-sep">/</span>
-  <span id="hdr-title">qr</span>
-  <div id="tab-bar"></div>
-  <a id="hdr-gh" href="https://github.com/humor4fun/tools" target="_blank">
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-    GitHub
-  </a>
+<header id="header">
+  <div id="header-actions"></div>
 </header>
 
 <aside id="sidebar">
 
   <!-- TYPE -->
   <div class="sb-sec" id="sec-type">
-    <div class="sb-hdr" data-sec="type">
+    <div class="sb-hdr">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M0 0h6v6H0zm10 0h6v6h-6zM0 10h6v6H0z"/></svg>
       Type
-      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+      <span class="sb-chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
     </div>
     <div class="sb-body">
       <div class="pills" id="type-pills">
@@ -185,10 +131,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 
   <!-- CONTENT -->
   <div class="sb-sec" id="sec-content">
-    <div class="sb-hdr" data-sec="content">
+    <div class="sb-hdr">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M14 1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/><path d="M3 4.5h10v1H3zm0 2h10v1H3zm0 2h6v1H3z"/></svg>
       Content
-      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+      <span class="sb-chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
     </div>
     <div class="sb-body">
       <textarea id="content-inp" rows="4" spellcheck="false">https://tools.bluejar.org/</textarea>
@@ -198,10 +144,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 
   <!-- ERROR CORRECTION (QR only) -->
   <div class="sb-sec" id="sec-ec">
-    <div class="sb-hdr" data-sec="ec">
+    <div class="sb-hdr">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/></svg>
       Error Correction
-      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+      <span class="sb-chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
     </div>
     <div class="sb-body">
       <div class="hint" id="ec-hint">Higher = more scannable if partially obscured</div>
@@ -225,9 +171,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 
   <!-- COLORS -->
   <div class="sb-sec" id="sec-colors">
-    <div class="sb-hdr" data-sec="colors">
+    <div class="sb-hdr">
       Colors
-      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+      <span class="sb-chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
     </div>
     <div class="sb-body">
       <div class="crow">
@@ -256,9 +202,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 
   <!-- SHAPE -->
   <div class="sb-sec" id="sec-shape">
-    <div class="sb-hdr" data-sec="shape">
+    <div class="sb-hdr">
       Shape
-      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+      <span class="sb-chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
     </div>
     <div class="sb-body">
       <div class="crow">
@@ -297,9 +243,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 
   <!-- CENTER IMAGE -->
   <div class="sb-sec" id="sec-img">
-    <div class="sb-hdr" data-sec="img">
+    <div class="sb-hdr">
       Center Image
-      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+      <span class="sb-chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
     </div>
     <div class="sb-body">
       <div id="img-drop">Drop image here or click to browse</div>
@@ -327,9 +273,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 
   <!-- SIZE -->
   <div class="sb-sec" id="sec-size">
-    <div class="sb-hdr" data-sec="size">
+    <div class="sb-hdr">
       Size
-      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+      <span class="sb-chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
     </div>
     <div class="sb-body">
       <div class="crow">
@@ -351,9 +297,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 
   <!-- EXPORT -->
   <div class="sb-sec" id="sec-export">
-    <div class="sb-hdr" data-sec="export">
+    <div class="sb-hdr">
       Export
-      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+      <span class="sb-chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
     </div>
     <div class="sb-body">
       <div class="btn-row">
@@ -378,10 +324,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 
 <main>
   <div id="preview-wrap">
-    <div id="code-name-row">
-      <input type="text" id="code-name" maxlength="25" placeholder="Untitled"
-             spellcheck="false" autocomplete="off">
-    </div>
     <canvas id="preview-canvas"></canvas>
     <div id="preview-err"></div>
   </div>
@@ -1331,15 +1273,11 @@ let lastMatrix = null;
 let lastSize = 0;
 
 // ─── Tab model ──────────────────────────────────────────────────────────────
-let tabs = [];
-let activeTabIdx = 0;
-let nextTabId = 1;
+let tabCtrl = null;
 
-function defaultTab(content) {
+function makeDefaultTab() {
   return {
-    id: nextTabId++,
-    name: '',
-    content: content !== undefined ? content : 'https://tools.bluejar.org/',
+    content: 'https://tools.bluejar.org/',
     type: 'qr',
     ec: 'M',
     fg: '#000000',
@@ -1353,7 +1291,6 @@ function defaultTab(content) {
     markerStyle: 'square',
     imgSize: 20,
     imgPad: 3,
-    collapsedSections: []
   };
 }
 
@@ -1364,16 +1301,8 @@ function tabLabel(tab) {
   return c.length <= 22 ? c : c.slice(0, 21) + '\u2026';
 }
 
-function persistTabs() {
-  try {
-    localStorage.setItem('qr_tabs', JSON.stringify({ tabs, activeTabIdx, nextTabId }));
-  } catch(e) { /* quota exceeded — ignore */ }
-}
-
 function getTabState() {
   return {
-    id: (tabs[activeTabIdx] || {}).id || nextTabId,
-    name: document.getElementById('code-name').value,
     content: contentInp.value,
     type: curType,
     ec: curEC,
@@ -1388,15 +1317,12 @@ function getTabState() {
     markerStyle: curMarker,
     imgSize: parseInt(imgSizeEl.value),
     imgPad: parseInt(imgPadEl.value),
-    collapsedSections: [...document.querySelectorAll('.sb-sec.collapsed')].map(el => el.id),
     centerImgDataUrl: centerImgDataUrl || null,
     centerImgName:    centerImgName || ''
   };
 }
 
 function applyTabState(tab) {
-  // Name
-  document.getElementById('code-name').value = tab.name || '';
   // Content
   contentInp.value = tab.content || '';
   // Type
@@ -1440,9 +1366,6 @@ function applyTabState(tab) {
   curMarker = tab.markerStyle || 'square';
   document.querySelectorAll('#marker-pills .pill').forEach(p =>
     p.classList.toggle('active', p.dataset.marker === curMarker));
-  // Collapsed sections
-  document.querySelectorAll('.sb-sec').forEach(sec =>
-    sec.classList.toggle('collapsed', (tab.collapsedSections || []).includes(sec.id)));
   // Center image: restore from persisted data URL, or wipe if absent
   if (tab.centerImgDataUrl) {
     const img = new Image();
@@ -1472,87 +1395,6 @@ function applyTabState(tab) {
   }
   updateECWarn();
   scheduleRender();
-}
-
-function renderTabBar() {
-  const bar = document.getElementById('tab-bar');
-  bar.innerHTML = '';
-  tabs.forEach((tab, i) => {
-    const chip = document.createElement('span');
-    chip.className = 'path-chip' + (i === activeTabIdx ? ' active' : '');
-
-    const label = document.createElement('span');
-    label.className = 'ws-chip-label';
-    label.textContent = tabLabel(tab);
-    label.title = tabLabel(tab);
-    label.addEventListener('click', () => { if (i !== activeTabIdx) switchTab(i); });
-
-    chip.appendChild(label);
-
-    if (tabs.length > 1) {
-      const closeBtn = document.createElement('button');
-      closeBtn.className = 'ws-chip-close';
-      closeBtn.textContent = '\xd7';
-      closeBtn.title = 'Close tab';
-      closeBtn.addEventListener('click', e => { e.stopPropagation(); closeTab(i); });
-      chip.appendChild(closeBtn);
-    }
-
-    bar.appendChild(chip);
-  });
-
-  const addBtn = document.createElement('button');
-  addBtn.className = 'ws-chip-add';
-  addBtn.textContent = '+';
-  addBtn.title = 'New code';
-  addBtn.addEventListener('click', () => newTab());
-  bar.appendChild(addBtn);
-}
-
-function switchTab(i) {
-  tabs[activeTabIdx] = getTabState();
-  activeTabIdx = i;
-  persistTabs();
-  applyTabState(tabs[activeTabIdx]);
-  renderTabBar();
-}
-
-function newTab() {
-  tabs[activeTabIdx] = getTabState();
-  const tab = defaultTab('');
-  tabs.push(tab);
-  activeTabIdx = tabs.length - 1;
-  persistTabs();
-  applyTabState(tab);
-  renderTabBar();
-}
-
-function closeTab(i) {
-  if (tabs.length === 1) return;
-  tabs.splice(i, 1);
-  if (activeTabIdx >= tabs.length) activeTabIdx = tabs.length - 1;
-  else if (activeTabIdx > i) activeTabIdx--;
-  persistTabs();
-  applyTabState(tabs[activeTabIdx]);
-  renderTabBar();
-}
-
-function loadFromStorage() {
-  try {
-    const raw = localStorage.getItem('qr_tabs');
-    if (!raw) throw new Error('empty');
-    const data = JSON.parse(raw);
-    if (!Array.isArray(data.tabs) || !data.tabs.length) throw new Error('bad');
-    tabs = data.tabs;
-    activeTabIdx = Math.min(data.activeTabIdx || 0, tabs.length - 1);
-    nextTabId = data.nextTabId || tabs.length + 1;
-  } catch(e) {
-    tabs = [defaultTab()];
-    activeTabIdx = 0;
-    nextTabId = 2;
-  }
-  renderTabBar();
-  applyTabState(tabs[activeTabIdx]);
 }
 
 const previewCanvas = document.getElementById('preview-canvas');
@@ -1593,10 +1435,10 @@ function scheduleRender() {
   clearTimeout(renderTimer);
   renderTimer = setTimeout(() => {
     // Auto-save state + keep chip label live on every render
-    if (tabs.length) {
-      tabs[activeTabIdx] = getTabState();
-      persistTabs();
-      renderTabBar();
+    if (tabCtrl) {
+      Object.assign(tabCtrl.current(), getTabState());
+      tabCtrl.persist();
+      tabCtrl.renderBar();
     }
     doRender();
   }, 50);
@@ -1634,10 +1476,7 @@ function doRender() {
   }
 }
 
-// Sidebar collapse
-document.querySelectorAll('.sb-hdr').forEach(h => {
-  h.addEventListener('click', () => h.closest('.sb-sec').classList.toggle('collapsed'));
-});
+
 
 // Type pills
 document.querySelectorAll('#type-pills .pill').forEach(p => {
@@ -1893,18 +1732,20 @@ function generateSVG(matrix, size, opts) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${total}" height="${total}" viewBox="0 0 ${total} ${total}">${clip}<g${clipAttr}>${bg}<g fill="${opts.fg}">${rects}</g></g></svg>`;
 }
 
-// Name field
-document.getElementById('code-name').addEventListener('input', function() {
-  this.value = this.value.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 25);
-  if (tabs.length) {
-    tabs[activeTabIdx].name = this.value;
-    renderTabBar();
-    persistTabs();
-  }
+// Init
+renderHeader({
+  title: 'qr',
+  toolIconSvg: '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M0 0h5v5H0zm6 0h5v5H6zM0 6h5v5H0zm6 0h1v1H6zm1 1h1v1H7zm1-1h1v1H8zm1 1h1v1H9zm1-1h5v5h-5zM6 11h1v1H6zm1 1h1v1H7zm1-1h1v1H8zm1 1h1v1H9zm1 1h1v1h-1zm1-1h1v1h-1zm1 1h1v1h-1zm-5 0h5v5H6zM0 12h5v5H0z"/></svg>',
+  githubPath: 'qr',
 });
-
-// Init — restore from localStorage or bootstrap default tab
-loadFromStorage();
+initSidebarSections('qr_prefs', ['sec-type','sec-content','sec-ec','sec-colors','sec-shape','sec-img','sec-size','sec-export']);
+tabCtrl = initTabs({
+  storageKey: 'qr_tabs',
+  defaultTab: makeDefaultTab,
+  tabLabel:   tabLabel,
+  onSwitch:   applyTabState,
+  onSave:     getTabState,
+}).init();
 </script>
 </body>
 </html>

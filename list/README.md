@@ -1,4 +1,4 @@
-# listops — List Sort, Clean & Transform
+# list — List Sort, Clean & Transform
 
 A single HTML file for sorting, cleaning, deduplicating, labelling, and reformatting text lists. Paste in any list, pick an operation from the sidebar, and the result appears instantly in the same textarea.
 
@@ -142,7 +142,7 @@ The undo stack is scoped to the current session and is not persisted across page
 | Operation | Description |
 |-----------|-------------|
 | Load from file | Opens a file picker and reads a local text file into the textarea |
-| Save to file | Downloads the current textarea content as `listops-export.txt` |
+| Save to file | Downloads the current textarea content as `list-export.txt` |
 | Print | Opens the browser print dialog with the textarea content |
 
 ---

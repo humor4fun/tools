@@ -1,4 +1,4 @@
-# mdweb — Local File Browser & Editor
+# text — Local File Browser & Editor
 
 A single HTML file that turns any local folder of text files into a browsable, readable, and editable workspace — directly in the browser, with no server, no install, and no build step.
 
@@ -24,21 +24,21 @@ The tool scans the folder, builds a file tree in the sidebar, and opens `README.
 
 ---
 
-## Terminal shortcut (`mdweb` command)
+## Terminal shortcut (`text` command)
 
-You can open mdweb directly from your terminal using a shell function. Add the following to your `~/.zshrc` (or `~/.bashrc`):
+You can open text directly from your terminal using a shell function. Add the following to your `~/.zshrc` (or `~/.bashrc`):
 
 ```zsh
-mdweb() {
-  open -a "Google Chrome" "file:///path/to/mdweb/index.html?autoopen"
+text() {
+  open -a "Google Chrome" "file:///path/to/text/index.html?autoopen"
 }
 ```
 
-Replace `/path/to/mdweb/index.html` with the actual path to `index.html` on your machine.
+Replace `/path/to/text/index.html` with the actual path to `index.html` on your machine.
 
-After reloading your shell (`source ~/.zshrc`), typing `mdweb` in any directory will open the tool in Chrome with the folder picker dialog already open — no button click needed.
+After reloading your shell (`source ~/.zshrc`), typing `text` in any directory will open the tool in Chrome with the folder picker dialog already open — no button click needed.
 
-**Note:** Due to browser security restrictions, the picker dialog cannot pre-navigate to the directory you ran `mdweb` from. You will still need to navigate to the desired folder in the OS dialog. The dialog typically remembers the last folder you selected.
+**Note:** Due to browser security restrictions, the picker dialog cannot pre-navigate to the directory you ran `text` from. You will still need to navigate to the desired folder in the OS dialog. The dialog typically remembers the last folder you selected.
 
 **How it works:** When `index.html` is opened with the `?autoopen` query parameter, the app automatically calls `showDirectoryPicker()` on load instead of waiting for a button click.
 
@@ -112,7 +112,7 @@ All other binary or unrecognised files are shown as a "Cannot display" notice by
 
 ### Multiple workspaces
 
-mdweb supports opening multiple folders simultaneously, each as its own independent workspace.
+text supports opening multiple folders simultaneously, each as its own independent workspace.
 
 **Workspace tabs**
 The header bar shows one chip per open folder. Click a chip to switch to that workspace; the sidebar tree and content pane update immediately. The last-open file or directory in each workspace is remembered and restored when you switch back.

@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <!--
-  mdweb — Local File Browser & Editor
+  text — Local File Browser & Editor
   Author: Chris Holt
   License: GNU Affero General Public License v3.0 (AGPL-3.0)
   SPDX-License-Identifier: AGPL-3.0-or-later
   https://www.gnu.org/licenses/agpl-3.0.html
 
-  Source: https://github.com/humor4fun/tools/tree/main/mdweb
+  Source: https://github.com/humor4fun/tools/tree/main/text
 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>mdweb</title>
+<title>text</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -818,7 +818,7 @@
         <line x1="4" y1="7" x2="11" y2="7" stroke="#58a6ff" stroke-width="1.2" stroke-linecap="round"/>
         <line x1="4" y1="10" x2="9" y2="10" stroke="#58a6ff" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
       </svg>
-      mdweb
+      text
     </span>
     <div id="header-path-chips"></div>
     <button id="btn-toggle-log" title="Toggle activity log">
@@ -897,7 +897,7 @@
         <line x1="13" y1="32" x2="35" y2="32" stroke="#58a6ff" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
         <line x1="13" y1="40" x2="26" y2="40" stroke="#58a6ff" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
       </svg>
-      <h1>mdweb</h1>
+      <h1>text</h1>
       <p>Open a folder to browse and read its text files. Use the button in the sidebar to get started.</p>
       <div class="arrow-hint">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="#4a5568"><path d="M9.5 2a.5.5 0 0 1 .5.5v11a.5.5 0 0 1-.854.354L5.5 9.707V14.5a.5.5 0 0 1-1 0V2a.5.5 0 0 1 1 0v4.793l3.646-3.647A.5.5 0 0 1 9.5 2z"/></svg>
@@ -1319,7 +1319,7 @@ document.addEventListener('drop', async e => {
   dropOverlay.classList.remove('active');
 
   // Ignore internal tree drag-and-drop (those items have our custom type set).
-  if (e.dataTransfer.types.includes('text/x-mdweb-src')) return;
+  if (e.dataTransfer.types.includes('text/x-text-src')) return;
 
   const items = e.dataTransfer.items ? [...e.dataTransfer.items] : [];
   if (!items.length) return;
@@ -1850,7 +1850,7 @@ async function startWatchingWs(ws) {
         }
       }
     } catch (e) {
-      console.warn('mdweb watch error:', e);
+      console.warn('text watch error:', e);
       stopWatchingWs(ws);
     }
   }, 10000);
@@ -2072,7 +2072,7 @@ function saveActivityLog() {
   const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  a.href = url; a.download = `mdweb-log-${new Date().toISOString().slice(0,19).replace(/[T:]/g,'-')}.txt`;
+  a.href = url; a.download = `text-log-${new Date().toISOString().slice(0,19).replace(/[T:]/g,'-')}.txt`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
   showToast('Log saved', { type: 'ok', duration: 2000 });
@@ -3564,15 +3564,15 @@ function makeDirItem(dir, depth, defaultOpen) {
   row.addEventListener('dragstart', e => {
     e.stopPropagation();
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/x-mdweb-src', dir.path);
-    e.dataTransfer.setData('text/x-mdweb-kind', 'directory');
+    e.dataTransfer.setData('text/x-text-src', dir.path);
+    e.dataTransfer.setData('text/x-text-kind', 'directory');
     row.style.opacity = '0.5';
   });
   row.addEventListener('dragend', () => { row.style.opacity = ''; });
 
   // ── Drop: dirs accept drops of other files/dirs ─────────────
   row.addEventListener('dragover', e => {
-    if (!e.dataTransfer.types.includes('text/x-mdweb-src')) return;
+    if (!e.dataTransfer.types.includes('text/x-text-src')) return;
     e.preventDefault(); e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
     row.classList.add('drop-target');
@@ -3583,8 +3583,8 @@ function makeDirItem(dir, depth, defaultOpen) {
   row.addEventListener('drop', async e => {
     e.preventDefault(); e.stopPropagation();
     row.classList.remove('drop-target');
-    const srcPath = e.dataTransfer.getData('text/x-mdweb-src');
-    const kind    = e.dataTransfer.getData('text/x-mdweb-kind');
+    const srcPath = e.dataTransfer.getData('text/x-text-src');
+    const kind    = e.dataTransfer.getData('text/x-text-kind');
     if (srcPath) await moveEntry(srcPath, dir.path, kind);
   });
 
@@ -3637,15 +3637,15 @@ function makeFileItem(file, depth) {
   row.addEventListener('dragstart', e => {
     e.stopPropagation();
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/x-mdweb-src', file.path);
-    e.dataTransfer.setData('text/x-mdweb-kind', 'file');
+    e.dataTransfer.setData('text/x-text-src', file.path);
+    e.dataTransfer.setData('text/x-text-kind', 'file');
     row.style.opacity = '0.5';
   });
   row.addEventListener('dragend', () => { row.style.opacity = ''; });
 
   // ── Drop: dropping onto a file moves to its parent dir ──────
   row.addEventListener('dragover', e => {
-    if (!e.dataTransfer.types.includes('text/x-mdweb-src')) return;
+    if (!e.dataTransfer.types.includes('text/x-text-src')) return;
     e.preventDefault(); e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
     row.classList.add('drop-target');
@@ -3656,8 +3656,8 @@ function makeFileItem(file, depth) {
   row.addEventListener('drop', async e => {
     e.preventDefault(); e.stopPropagation();
     row.classList.remove('drop-target');
-    const srcPath = e.dataTransfer.getData('text/x-mdweb-src');
-    const kind    = e.dataTransfer.getData('text/x-mdweb-kind');
+    const srcPath = e.dataTransfer.getData('text/x-text-src');
+    const kind    = e.dataTransfer.getData('text/x-text-kind');
     if (!srcPath) return;
     // Target = parent directory of this file
     const destDirPath = file.path.includes('/')
@@ -3749,7 +3749,7 @@ if (!('showDirectoryPicker' in window)) {
 }
 
 // ── Auto-open via ?autoopen URL param ─────────────────────────────────────────
-// When opened with ?autoopen (e.g. via the `mdweb` shell command), automatically
+// When opened with ?autoopen (e.g. via the `text` shell command), automatically
 // trigger the folder picker dialog so the user doesn't have to click Open Folder.
 (async () => {
   const params = new URLSearchParams(window.location.search);

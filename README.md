@@ -8,8 +8,8 @@ A collection of small, standalone browser-based tools by Chris Holt. Each tool l
 
 | Tool | Description |
 |------|-------------|
-| [mdweb](./mdweb/) | Single-file local file browser and editor. Open any folder of text files and browse, read, and edit them directly in the browser using the File System Access API. |
-| [listops](./listops/) | List sort, clean, and transform tool. Sort by name, date, or length; deduplicate; relabel; prune; find and replace; change case — all in a single textarea. |
+| [text](./text/) | Single-file local file browser and editor. Open any folder of text files and browse, read, and edit them directly in the browser using the File System Access API. |
+| [list](./list/) | List sort, clean, and transform tool. Sort by name, date, or length; deduplicate; relabel; prune; find and replace; change case — all in a single textarea. |
 | [transcode](./transcode/) | Text encoding, decoding, and hashing tool with a chainable pipeline UI. Compose multi-step transformations: Base64, URL encoding, HTML entities, hex, binary, ROT13, Morse, SHA, MD5, and more. |
 
 ---

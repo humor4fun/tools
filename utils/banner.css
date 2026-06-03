@@ -1,0 +1,31 @@
+/* tools/utils/banner.css — loaded automatically by banner.js */
+.util-banner {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  background: rgba(210, 153, 34, 0.10);
+  border-bottom: 1px solid rgba(210, 153, 34, 0.35);
+  color: #e3b341;
+}
+.util-banner.visible {
+  display: flex;
+}
+.util-banner-msg {
+  flex: 1;
+}
+.util-banner-dismiss {
+  background: none;
+  border: 1px solid rgba(210, 153, 34, 0.4);
+  border-radius: var(--radius, 6px);
+  color: #e3b341;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-family: var(--font-mono, monospace);
+}
+.util-banner-dismiss:hover {
+  background: rgba(210, 153, 34, 0.15);
+}

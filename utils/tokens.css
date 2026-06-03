@@ -1,0 +1,42 @@
+/* tools/utils/tokens.css — shared design tokens for all tools
+   Include this before any tool-specific styles.
+   Last updated: 2026-06
+*/
+:root {
+  /* Backgrounds */
+  --bg:          #0f1117;
+  --bg-sidebar:  #161b27;
+  --bg-content:  #0f1117;
+  --bg-input:    #1c2232;
+  --bg-hover:    #1e2535;
+  --bg-active:   #1e3a5f;
+
+  /* Borders */
+  --border:       #232b3e;
+  --border-light: #1e2535;
+
+  /* Text */
+  --text:         #c9d1d9;
+  --text-muted:   #6e7a8a;
+  --text-dim:     #6e7681;   /* alias used by barcode/qr */
+  --text-heading: #e6edf3;
+  --text-link:    #58a6ff;
+
+  /* Accent colours */
+  --accent-blue:   #1f6feb;
+  --accent-blue-h: #388bfd;
+  --accent-green:  #238636;
+
+  /* Aliases used by barcode / qr */
+  --accent:   var(--accent-blue);
+  --accent-h: var(--accent-blue-h);
+
+  /* Radii */
+  --radius: 6px;
+  --r:      6px;   /* barcode/qr alias */
+
+  /* Typography */
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-ui:   var(--font-sans);   /* barcode/qr alias */
+}

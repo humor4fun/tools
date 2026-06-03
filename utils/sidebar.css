@@ -1,0 +1,45 @@
+/* tools/utils/sidebar.css — loaded automatically by sidebar.js
+   Canonical sidebar section classes: .sb-sec / .sb-hdr / .sb-body
+*/
+#sidebar {
+  background: var(--bg-sidebar, #161b27);
+  border-right: 1px solid var(--border, #232b3e);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.sb-sec {
+  border-bottom: 1px solid var(--border-light, #1e2535);
+}
+.sb-hdr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted, #6e7a8a);
+}
+.sb-hdr:hover {
+  color: var(--text, #c9d1d9);
+  background: var(--bg-hover, #1e2535);
+}
+.sb-chevron {
+  margin-left: auto;
+  transition: transform 0.15s;
+}
+.sb-sec.collapsed .sb-chevron {
+  transform: rotate(-90deg);
+}
+.sb-body {
+  padding: 10px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sb-sec.collapsed .sb-body {
+  display: none;
+}

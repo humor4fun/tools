@@ -13,36 +13,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>transcode — tools.bluejar.org</title>
+<link rel="stylesheet" href="../utils/tokens.css">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg:           #0f1117;
-    --bg-sidebar:   #161b27;
-    --bg-content:   #0f1117;
-    --bg-hover:     #1e2535;
-    --bg-active:    #1e3a5f;
-    --border:       #232b3e;
-    --border-light: #1e2535;
-
-    --text:         #c9d1d9;
-    --text-muted:   #6e7a8a;
-    --text-dim:     #4a5568;
-    --text-heading: #e6edf3;
-    --text-link:    #58a6ff;
-
-    --accent-blue:   #1f6feb;
-    --accent-blue-h: #388bfd;
-    --accent-green:  #238636;
     --accent-decode:   #e8821a;
     --accent-decode-h: #f59e42;
-
     --sidebar-w:   290px;
     --header-h:    48px;
     --statusbar-h: 38px;
-    --radius: 6px;
-    --font-mono: 'JetBrains Mono','Fira Code','Cascadia Code',ui-monospace,monospace;
-    --font-sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
   }
 
   html, body {
@@ -57,41 +37,6 @@
     grid-template-rows: var(--header-h) 1fr var(--statusbar-h);
     height: 100vh; width: 100vw;
   }
-
-  /* ── Header ──────────────────────────────────────────────── */
-  #header {
-    grid-column: 1 / -1;
-    display: flex; align-items: center; padding: 0 16px; gap: 10px;
-    background: var(--bg-sidebar); border-bottom: 1px solid var(--border); z-index: 10;
-  }
-  #header-logo {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 13px; font-weight: 600; color: var(--text-heading);
-    letter-spacing: 0.01em; text-decoration: none;
-  }
-  #header-logo svg { flex-shrink: 0; }
-  .header-sep { color: var(--border); margin: 0 2px; font-size: 16px; }
-  #header-title {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 13px; font-weight: 600; color: var(--text-heading);
-    font-family: var(--font-mono);
-  }
-  #header-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
-  .hdr-btn {
-    display: flex; align-items: center; gap: 5px;
-    background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius);
-    color: var(--text-muted); font-size: 11.5px; font-family: var(--font-sans);
-    padding: 4px 10px; cursor: pointer; height: 28px; white-space: nowrap;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
-  }
-  .hdr-btn:hover { background: var(--bg-active); color: var(--text); border-color: var(--accent-blue); }
-  #btn-hdr-gh {
-    background: none; border: none; color: var(--text-dim); font-size: 11px;
-    padding: 4px 8px; border-radius: 4px; cursor: pointer; text-decoration: none;
-    display: flex; align-items: center; gap: 5px;
-    transition: color 0.15s, background 0.15s;
-  }
-  #btn-hdr-gh:hover { color: var(--text-muted); background: var(--bg-hover); }
 
   /* ── Main pane ───────────────────────────────────────────── */
   #main-pane {
@@ -311,7 +256,6 @@
 
   /* ── Sidebar ─────────────────────────────────────────────── */
   #sidebar {
-    background: var(--bg-sidebar); overflow-y: auto; overflow-x: hidden;
     display: flex; flex-direction: column;
     scrollbar-width: thin; scrollbar-color: var(--border) transparent;
   }
@@ -327,25 +271,6 @@
   }
   #stats { flex: 1; font-family: var(--font-mono); font-size: 11px; }
   .sb-sep { color: var(--border); }
-
-  /* ── Sidebar sections ────────────────────────────────────── */
-  .sb-section { border-bottom: 1px solid var(--border); }
-  .sb-section-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 8px 12px 7px; cursor: pointer; user-select: none;
-    transition: background 0.12s;
-  }
-  .sb-section-header:hover { background: var(--bg-hover); }
-  .sb-section-title {
-    font-size: 10px; font-weight: 600; color: var(--text-dim);
-    text-transform: uppercase; letter-spacing: 0.08em;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .sb-section-title svg { opacity: 0.6; }
-  .sb-chevron { color: var(--text-dim); transition: transform 0.15s; flex-shrink: 0; }
-  .sb-chevron.open { transform: rotate(180deg); }
-  .sb-section-body { display: none; padding: 4px 8px 10px; }
-  .sb-section-body.open { display: block; }
 
   /* ── Op buttons ──────────────────────────────────────────── */
   .op-btn {
@@ -368,44 +293,18 @@
     border-bottom: 1px solid var(--border);
   }
 
-  /* ── Toast ───────────────────────────────────────────────── */
-  #toast {
-    position: fixed; top: 14px; left: 50%; transform: translateX(-50%) translateY(-8px);
-    background: var(--bg-sidebar); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 8px 18px;
-    font-size: 12.5px; color: var(--text);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-    opacity: 0; transition: opacity 0.2s, transform 0.2s;
-    pointer-events: none; z-index: 1000; white-space: nowrap;
-  }
-  #toast.visible  { opacity: 1; transform: translateX(-50%) translateY(0); }
-  #toast.ok   { border-color: var(--accent-green); color: #4ade80; }
-  #toast.warn { border-color: #fbbf24; color: #fbbf24; }
-  #toast.err  { border-color: #f85149; color: #f85149; }
 </style>
+<script src="../utils/debounce.js"></script>
+<script src="../utils/toast.js"></script>
+<script src="../utils/clipboard.js"></script>
+<script src="../utils/sidebar.js"></script>
+<script src="../utils/header.js"></script>
 </head>
 <body>
 <div id="app">
 
   <!-- ── Header ─────────────────────────────────────────────── -->
   <header id="header">
-    <a id="header-logo" href="/">
-      <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-        <rect x="1" y="1" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.8"/>
-        <rect x="9" y="1" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.5"/>
-        <rect x="1" y="9" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.5"/>
-        <rect x="9" y="9" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.3"/>
-      </svg>
-      tools
-    </a>
-    <span class="header-sep">/</span>
-    <span id="header-title">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-        <path d="M1 4a.5.5 0 0 1 .5-.5h11.793l-2.147-2.146a.5.5 0 0 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L13.293 4.5H1.5A.5.5 0 0 1 1 4z"/>
-        <path d="M15 12a.5.5 0 0 1-.5.5H2.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 0 1 .708.708L2.707 11.5H14.5a.5.5 0 0 1 .5.5z" opacity="0.6"/>
-      </svg>
-      transcode
-    </span>
     <div id="header-actions">
       <button class="hdr-btn" id="btn-copy-output">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/></svg>
@@ -415,10 +314,6 @@
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41m-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9"/><path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5 5 0 0 0 8 3M3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9z"/></svg>
         Reset
       </button>
-      <a id="btn-hdr-gh" href="https://github.com/humor4fun/tools/tree/main/transcode" target="_blank" rel="noopener">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-        humor4fun/tools
-      </a>
     </div>
   </header>
 
@@ -453,15 +348,15 @@
     <div class="sb-hint">Drag an operation onto a slot or onto the chain bar to append a step. Click to assign to the focused slot (highlighted in blue).</div>
 
     <!-- Encoding -->
-    <div class="sb-section" id="sec-encoding">
-      <div class="sb-section-header" data-sec="encoding">
-        <span class="sb-section-title">
+    <div class="sb-sec" id="sec-encoding">
+      <div class="sb-hdr">
+        <span>
           <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M10.478 1.647a.5.5 0 1 0-.956-.294l-4 13a.5.5 0 0 0 .956.294zM4.854 4.146a.5.5 0 0 1 0 .708L1.707 8l3.147 3.146a.5.5 0 0 1-.708.708l-3.5-3.5a.5.5 0 0 1 0-.708l3.5-3.5a.5.5 0 0 1 .708 0m6.292 0a.5.5 0 0 0 0 .708L14.293 8l-3.147 3.146a.5.5 0 0 0 .708.708l3.5-3.5a.5.5 0 0 0 0-.708l-3.5-3.5a.5.5 0 0 0-.708 0"/></svg>
           Encoding
         </span>
-        <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="sb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
-      <div class="sb-section-body open" id="body-encoding">
+      <div class="sb-body" id="body-encoding">
         <button class="op-btn" data-op="base64" draggable="true">Base64</button>
         <button class="op-btn" data-op="base64url" draggable="true">Base64 URL-safe</button>
         <button class="op-btn" data-op="url-percent" draggable="true">URL Percent-Encode</button>
@@ -471,15 +366,15 @@
     </div>
 
     <!-- Hashing -->
-    <div class="sb-section" id="sec-hashing">
-      <div class="sb-section-header" data-sec="hashing">
-        <span class="sb-section-title">
+    <div class="sb-sec" id="sec-hashing">
+      <div class="sb-hdr">
+        <span>
           <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2"/></svg>
           Hashing
         </span>
-        <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="sb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
-      <div class="sb-section-body open" id="body-hashing">
+      <div class="sb-body" id="body-hashing">
         <button class="op-btn" data-op="md5" draggable="true">MD5<span class="op-btn-note">one-way</span></button>
         <button class="op-btn" data-op="sha1" draggable="true">SHA-1<span class="op-btn-note">one-way</span></button>
         <button class="op-btn" data-op="sha256" draggable="true">SHA-256<span class="op-btn-note">one-way</span></button>
@@ -488,15 +383,15 @@
     </div>
 
     <!-- Number Bases -->
-    <div class="sb-section" id="sec-bases">
-      <div class="sb-section-header" data-sec="bases">
-        <span class="sb-section-title">
+    <div class="sb-sec" id="sec-bases">
+      <div class="sb-hdr">
+        <span>
           <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5zm8 0A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5z"/></svg>
           Number Bases
         </span>
-        <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="sb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
-      <div class="sb-section-body open" id="body-bases">
+      <div class="sb-body" id="body-bases">
         <button class="op-btn" data-op="hex" draggable="true">Hex (bytes)</button>
         <button class="op-btn" data-op="binary" draggable="true">Binary (bytes)</button>
         <button class="op-btn" data-op="octal" draggable="true">Octal (bytes)</button>
@@ -505,15 +400,15 @@
     </div>
 
     <!-- Text Transforms -->
-    <div class="sb-section" id="sec-transforms">
-      <div class="sb-section-header" data-sec="transforms">
-        <span class="sb-section-title">
+    <div class="sb-sec" id="sec-transforms">
+      <div class="sb-hdr">
+        <span>
           <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M2.244 13.081a.5.5 0 0 1-.622.311l-.189-.063a.5.5 0 0 1-.311-.622L5.89 2.5H8.25l4.562 10.5H10l-.9-2.188H4.901zm1.862-4.5h3.788l-1.89-4.577zM9 3a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V8h2v2a1 1 0 0 0 2 0V4a1 1 0 0 0-2 0v2h-2V4a1 1 0 0 0-1-1"/></svg>
           Text Transforms
         </span>
-        <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="sb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
-      <div class="sb-section-body open" id="body-transforms">
+      <div class="sb-body" id="body-transforms">
         <button class="op-btn" data-op="rot13" draggable="true">ROT13<span class="op-btn-note">symmetric</span></button>
         <button class="op-btn" data-op="rot47" draggable="true">ROT47<span class="op-btn-note">symmetric</span></button>
         <button class="op-btn" data-op="reverse" draggable="true">Reverse string<span class="op-btn-note">symmetric</span></button>
@@ -524,15 +419,15 @@
     </div>
 
     <!-- ASCII Tools -->
-    <div class="sb-section" id="sec-ascii">
-      <div class="sb-section-header" data-sec="ascii">
-        <span class="sb-section-title">
+    <div class="sb-sec" id="sec-ascii">
+      <div class="sb-hdr">
+        <span>
           <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm6 9a1 1 0 1 1 0-2 1 1 0 0 1 0 2m2.5-4.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5m-5 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5"/></svg>
           ASCII Tools
         </span>
-        <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="sb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
-      <div class="sb-section-body open" id="body-ascii">
+      <div class="sb-body" id="body-ascii">
         <button class="op-btn" data-op="strip-nonascii" draggable="true">Strip non-ASCII<span class="op-btn-note">one-way</span></button>
         <button class="op-btn" data-op="transliterate" draggable="true">Transliterate to ASCII<span class="op-btn-note">one-way</span></button>
         <button class="op-btn" data-op="force-7bit" draggable="true">Force 7-bit ASCII<span class="op-btn-note">one-way</span></button>
@@ -548,8 +443,6 @@
 
 </div>
 
-<div id="toast"></div>
-
 <script>
 'use strict';
 
@@ -559,7 +452,6 @@ const chainInput   = $('chain-input');
 const chainArea    = $('chain-area');
 const chainSummary = $('chain-summary');
 const statsEl      = $('stats');
-const toastEl      = $('toast');
 
 // ── Chain state ───────────────────────────────────────────────
 // chain[i] = { op: null|string, mode: 'encode'|'decode', node, slotEl, outputEl, addBtnWrap }
@@ -927,12 +819,9 @@ function addStep() {
   outputEl.readOnly = true;
   outputEl.spellcheck = false;
 
-  copyBtn.addEventListener('click', async () => {
+  copyBtn.addEventListener('click', () => {
     if (!outputEl.value) { toast('Nothing to copy', 'warn'); return; }
-    try {
-      await navigator.clipboard.writeText(outputEl.value);
-      toast(`Output #${stepNum} copied`, 'ok');
-    } catch(e) { toast('Copy failed', 'err'); }
+    copyText(outputEl.value, { successMsg: `Output #${stepNum} copied` });
   });
 
   outputWrap.appendChild(outputLabel);
@@ -1202,8 +1091,6 @@ function updateSummary() {
 }
 
 // ── Run chain ─────────────────────────────────────────────────
-let runChainTimer = null;
-
 async function runChain() {
   const inputVal = chainInput.value;
   let prevVal = inputVal;
@@ -1234,10 +1121,7 @@ async function runChain() {
   savePrefs();
 }
 
-function debouncedRunChain() {
-  clearTimeout(runChainTimer);
-  runChainTimer = setTimeout(runChain, 300);
-}
+const debouncedRunChain = debounce(runChain, 300);
 
 // ── Stats ─────────────────────────────────────────────────────
 function updateStats() {
@@ -1266,15 +1150,6 @@ function resetChain() {
   savePrefs();
 }
 
-// ── Toast ─────────────────────────────────────────────────────
-let toastTimer;
-function toast(msg, type = '') {
-  clearTimeout(toastTimer);
-  toastEl.textContent = msg;
-  toastEl.className = 'visible' + (type ? ' ' + type : '');
-  toastTimer = setTimeout(() => { toastEl.className = ''; }, 2600);
-}
-
 // ── Sidebar op buttons ────────────────────────────────────────
 document.querySelectorAll('.op-btn[data-op]').forEach(btn => {
   btn.addEventListener('dragstart', e => {
@@ -1284,17 +1159,6 @@ document.querySelectorAll('.op-btn[data-op]').forEach(btn => {
   btn.addEventListener('click', () => {
     if (chain.length === 0) return;
     setSlotOp(focusedSlotIdx, btn.dataset.op);
-  });
-});
-
-// ── Sidebar collapse ──────────────────────────────────────────
-document.querySelectorAll('.sb-section-header[data-sec]').forEach(hdr => {
-  hdr.addEventListener('click', () => {
-    const body = $('body-' + hdr.dataset.sec);
-    const chev = hdr.querySelector('.sb-chevron');
-    body.classList.toggle('open');
-    chev.classList.toggle('open');
-    savePrefs();
   });
 });
 
@@ -1333,7 +1197,7 @@ chainSummary.addEventListener('drop', e => {
 });
 
 // ── Header buttons ────────────────────────────────────────────
-$('btn-copy-output').addEventListener('click', async () => {
+$('btn-copy-output').addEventListener('click', () => {
   let text = '';
   for (let i = chain.length - 1; i >= 0; i--) {
     if (chain[i].outputEl.value && !chain[i].outputEl.className.includes('is-loading')) {
@@ -1341,10 +1205,7 @@ $('btn-copy-output').addEventListener('click', async () => {
     }
   }
   if (!text) { toast('Nothing to copy', 'warn'); return; }
-  try {
-    await navigator.clipboard.writeText(text);
-    toast('Output copied', 'ok');
-  } catch(e) { toast('Copy failed', 'err'); }
+  copyText(text, { successMsg: 'Output copied' });
 });
 
 $('btn-reset').addEventListener('click', () => resetChain());
@@ -1356,15 +1217,12 @@ chainInput.addEventListener('input', () => {
 });
 
 // ── Persistence ───────────────────────────────────────────────
-const SECTIONS = ['encoding','hashing','bases','transforms','ascii'];
-
 function savePrefs() {
   try {
     const p = {
       chainOps: chain.map(s => ({ op: s.op, mode: s.mode || 'encode' })),
       chainInput: chainInput.value,
     };
-    SECTIONS.forEach(s => { p['sec_'+s] = $('body-'+s).classList.contains('open'); });
     localStorage.setItem('transcode_prefs', JSON.stringify(p));
   } catch(e) {}
 }
@@ -1372,15 +1230,6 @@ function savePrefs() {
 async function loadPrefs() {
   try {
     const p = JSON.parse(localStorage.getItem('transcode_prefs') || '{}');
-
-    // Restore section collapse
-    SECTIONS.forEach(s => {
-      if (p['sec_'+s] === false) {
-        $('body-'+s).classList.remove('open');
-        const sec = $('sec-'+s);
-        if (sec) { const chev = sec.querySelector('.sb-chevron'); if (chev) chev.classList.remove('open'); }
-      }
-    });
 
     // Restore input
     if (p.chainInput) chainInput.value = p.chainInput;
@@ -1420,6 +1269,12 @@ async function loadPrefs() {
 }
 
 // ── Init ──────────────────────────────────────────────────────
+renderHeader({
+  title: 'transcode',
+  toolIconSvg: '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M1 4a.5.5 0 0 1 .5-.5h11.793l-2.147-2.146a.5.5 0 0 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L13.293 4.5H1.5A.5.5 0 0 1 1 4z"/><path d="M15 12a.5.5 0 0 1-.5.5H2.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 0 1 .708.708L2.707 11.5H14.5a.5.5 0 0 1 .5.5z" opacity="0.6"/></svg>',
+  githubPath: 'transcode',
+});
+initSidebarSections('transcode_prefs', ['sec-encoding','sec-hashing','sec-bases','sec-transforms','sec-ascii']);
 addStep(); // create initial step
 loadPrefs();
 </script>

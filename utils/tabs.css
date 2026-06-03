@@ -1,0 +1,91 @@
+/* tools/utils/tabs.css — loaded automatically by tabs.js */
+#tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  overflow-x: auto;
+  padding: 0 8px;
+  scrollbar-width: none;
+}
+#tab-bar::-webkit-scrollbar { display: none; }
+
+.path-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted, #6e7a8a);
+  padding: 3px 8px;
+  border-radius: var(--radius, 6px);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+  transition: color 0.1s, background 0.1s, border-color 0.1s;
+  max-width: 200px;
+}
+.path-chip:hover {
+  color: var(--text, #c9d1d9);
+  background: rgba(31, 111, 235, 0.12);
+  border-color: var(--accent-blue, #1f6feb);
+}
+.path-chip.active {
+  color: var(--text-heading, #e6edf3);
+  border-color: var(--accent-blue, #1f6feb);
+  background: rgba(31, 111, 235, 0.18);
+}
+.ws-chip-label {
+  cursor: pointer;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-chip-input {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-heading, #e6edf3);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  width: 120px;
+  padding: 0;
+}
+.ws-chip-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted, #6e7a8a);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 1px;
+  opacity: 0;
+  transition: color 0.1s, opacity 0.1s;
+}
+.path-chip:hover .ws-chip-close { opacity: 1; }
+.ws-chip-close:hover { color: #f87171; }
+.ws-chip-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--border, #232b3e);
+  border-radius: var(--radius, 6px);
+  color: var(--text-muted, #6e7a8a);
+  font-size: 16px;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.1s, background 0.1s, border-color 0.1s;
+}
+.ws-chip-add:hover {
+  color: var(--text, #c9d1d9);
+  background: var(--bg-hover, #1e2535);
+  border-color: var(--accent-blue, #1f6feb);
+}

@@ -1,0 +1,26 @@
+/* tools/utils/toast.css — loaded automatically by toast.js */
+#toast {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--bg-sidebar, #161b27);
+  color: var(--text, #c9d1d9);
+  border: 1px solid var(--border, #232b3e);
+  border-radius: var(--radius, 6px);
+  padding: 8px 16px;
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s, transform 0.18s;
+  z-index: 9999;
+  white-space: nowrap;
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+#toast.ok  { border-color: var(--accent-green, #238636); color: #3fb950; }
+#toast.err { border-color: #f87171; color: #f87171; }
+#toast.warn { border-color: #d29922; color: #e3b341; }

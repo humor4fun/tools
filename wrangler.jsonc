@@ -15,7 +15,9 @@
       "wrangler.jsonc",
       "LICENSE",
       "README.md",
-      "*/README.md"
+      "*/README.md",
+      ".context.md",
+      "utils/README.md"
     ]
   },
   "compatibility_flags": [
