@@ -116,10 +116,19 @@
     background: var(--bg-active); border: 1px solid var(--accent-blue);
     color: var(--text-link); border-radius: 4px; padding: 1px 7px;
     font-size: 11px; font-family: var(--font-mono);
+    transition: background 0.12s, box-shadow 0.12s;
   }
   .cs-pill.decode {
     background: rgba(232,130,26,0.12); border-color: var(--accent-decode);
     color: var(--accent-decode);
+  }
+  .cs-pill.clickable { cursor: pointer; }
+  .cs-pill.clickable:hover { background: var(--bg-hover); box-shadow: 0 0 0 1px currentColor; }
+  .cs-pill[draggable="true"] { cursor: grab; user-select: none; }
+  .cs-pill[draggable="true"].clickable:hover { cursor: grab; }
+  .cs-pill.drop-before {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 1px;
   }
   #chain-summary.drag-over {
     background: rgba(31,111,235,0.08);
@@ -288,6 +297,9 @@
   }
   .chain-add-btn:hover { background: var(--bg-active); color: var(--text); border-color: var(--accent-blue); }
   .chain-add-btn:disabled { opacity: 0.3; cursor: default; }
+  .chain-add-btn-wrap.drag-over .chain-add-btn {
+    background: var(--bg-active); border-color: var(--accent-blue); color: var(--text);
+  }
 
   /* ── Copy output micro button ────────────────────────────── */
   .copy-out-btn {
@@ -511,6 +523,22 @@
       </div>
     </div>
 
+    <!-- ASCII Tools -->
+    <div class="sb-section" id="sec-ascii">
+      <div class="sb-section-header" data-sec="ascii">
+        <span class="sb-section-title">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm6 9a1 1 0 1 1 0-2 1 1 0 0 1 0 2m2.5-4.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5m-5 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5"/></svg>
+          ASCII Tools
+        </span>
+        <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="sb-section-body open" id="body-ascii">
+        <button class="op-btn" data-op="strip-nonascii" draggable="true">Strip non-ASCII<span class="op-btn-note">one-way</span></button>
+        <button class="op-btn" data-op="transliterate" draggable="true">Transliterate to ASCII<span class="op-btn-note">one-way</span></button>
+        <button class="op-btn" data-op="force-7bit" draggable="true">Force 7-bit ASCII<span class="op-btn-note">one-way</span></button>
+      </div>
+    </div>
+
   </aside>
 
   <!-- ── Status bar ─────────────────────────────────────────── -->
@@ -534,9 +562,19 @@ const statsEl      = $('stats');
 const toastEl      = $('toast');
 
 // ── Chain state ───────────────────────────────────────────────
-// chain[i] = { op: null|string, node, slotEl, outputEl, addBtnWrap }
+// chain[i] = { op: null|string, mode: 'encode'|'decode', node, slotEl, outputEl, addBtnWrap }
 let chain = [];
 let focusedSlotIdx = 0;
+let reorderSrcIdx = null; // set while dragging a chain-summary pill
+
+// ── Transliteration supplement (hex-escaped, no literal non-ASCII) ──
+const TRANSLIT_SUPP = {
+  '\u00F8':'o',  '\u00D8':'O',  '\u0142':'l',  '\u0141':'L',
+  '\u00DF':'ss', '\u00E6':'ae', '\u00C6':'AE', '\u0153':'oe',
+  '\u0152':'OE', '\u00F0':'d',  '\u00D0':'D',  '\u00FE':'th',
+  '\u00DE':'Th', '\u0131':'i',  '\u0126':'H',  '\u0127':'h',
+  '\u014B':'n',  '\u014A':'N',  '\u0138':'k',  '\u017F':'s'
+};
 
 // ── Morse tables ──────────────────────────────────────────────
 const MORSE_ENC = {
@@ -725,6 +763,27 @@ const OPS = {
     encode: s => s.toUpperCase().split('').map(c => c===' ' ? ' / ' : (MORSE_ENC[c] ? MORSE_ENC[c]+' ' : '')).join('').trim(),
     decode: s => s.split(' / ').map(word => word.trim().split(/\s+/).map(tok => MORSE_DEC[tok] || '?').join('')).join(' '),
   },
+  'strip-nonascii': {
+    label: 'Strip non-ASCII',
+    encode: s => s.replace(/[^\x20-\x7E\t\n\r]/g, ''),
+    oneWay: true,
+  },
+  'transliterate': {
+    label: 'Transliterate to ASCII',
+    encode: s => [...s.normalize('NFD')].map(c => {
+      if (TRANSLIT_SUPP[c]) return TRANSLIT_SUPP[c];
+      const cp = c.codePointAt(0);
+      if (cp >= 0x0300 && cp <= 0x036F) return ''; // strip combining marks
+      if (cp > 127) return '?';
+      return c;
+    }).join(''),
+    oneWay: true,
+  },
+  'force-7bit': {
+    label: 'Force 7-bit ASCII',
+    encode: s => [...s].map(c => String.fromCharCode(c.charCodeAt(0) & 0x7F)).join(''),
+    oneWay: true,
+  },
 };
 
 // ── Slot rendering ────────────────────────────────────────────
@@ -888,6 +947,22 @@ function addStep() {
   addBtn.addEventListener('click', addStep);
   addBtnWrap.appendChild(addBtn);
 
+  // Make the add-step area a drop target for sidebar ops
+  addBtnWrap.addEventListener('dragover', e => {
+    if (reorderSrcIdx !== null) return; // ignore reorder drags
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    addBtnWrap.classList.add('drag-over');
+  });
+  addBtnWrap.addEventListener('dragleave', () => addBtnWrap.classList.remove('drag-over'));
+  addBtnWrap.addEventListener('drop', e => {
+    addBtnWrap.classList.remove('drag-over');
+    if (reorderSrcIdx !== null) return;
+    e.preventDefault();
+    const op = e.dataTransfer.getData('text/plain');
+    if (op && OPS[op]) { addStep(); setSlotOp(chain.length - 1, op); }
+  });
+
   node.appendChild(connector);
   node.appendChild(slotWrap);
   node.appendChild(outputWrap);
@@ -987,6 +1062,28 @@ function toggleSlotMode(i) {
   savePrefs();
 }
 
+// ── Reorder chain steps ───────────────────────────────────────
+function reorderChain(from, to) {
+  if (from === to) return;
+  const [step] = chain.splice(from, 1);
+  chain.splice(to, 0, step);
+  // Re-append DOM nodes in new order (browser moves existing nodes)
+  chain.forEach(s => chainArea.appendChild(s.node));
+  refreshSlotIndices();
+  chain.forEach((_, i) => renderSlot(i));
+  renumberOutputs();
+  chain.forEach((s, i) => {
+    (i < chain.length - 1)
+      ? s.outputEl.classList.add('collapsed')
+      : s.outputEl.classList.remove('collapsed');
+  });
+  updateAddButtons();
+  focusedSlotIdx = Math.min(focusedSlotIdx, chain.length - 1);
+  updateSummary();
+  runChain();
+  savePrefs();
+}
+
 // ── Focus slot ────────────────────────────────────────────────
 function focusSlot(i) {
   focusedSlotIdx = i;
@@ -1029,16 +1126,77 @@ function updateSummary() {
       arrow.textContent = '→';
       chainSummary.appendChild(arrow);
     }
+
     const pill = document.createElement('span');
+
     if (s.op) {
       const def = OPS[s.op];
       const isDecodeMode = s.mode === 'decode' && !def.symmetric && !def.oneWay;
-      pill.className = 'cs-pill' + (isDecodeMode ? ' decode' : '');
+      const canToggle = !def.oneWay && !def.symmetric;
+
+      let cls = 'cs-pill' + (isDecodeMode ? ' decode' : '');
+      if (canToggle) cls += ' clickable';
+      pill.className = cls;
       pill.textContent = (isDecodeMode ? '↓ ' : '↑ ') + def.label;
+
+      // Tooltip
+      if (canToggle) {
+        pill.title = isDecodeMode
+          ? 'Click to switch to encode mode · Drag to reorder'
+          : 'Click to switch to decode mode · Drag to reorder';
+      } else if (def.oneWay) {
+        pill.title = 'One-way operation · Drag to reorder';
+      } else {
+        pill.title = 'Symmetric operation · Drag to reorder';
+      }
+
+      // Click to toggle encode/decode
+      if (canToggle) {
+        pill.addEventListener('click', e => {
+          if (pill._wasDragged) { pill._wasDragged = false; return; }
+          toggleSlotMode(i);
+        });
+      }
+
+      // Drag to reorder
+      pill.draggable = true;
+      pill.dataset.chainIdx = i;
+
+      pill.addEventListener('dragstart', e => {
+        pill._wasDragged = true;
+        reorderSrcIdx = i;
+        e.dataTransfer.setData('application/transcode-reorder', String(i));
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      pill.addEventListener('dragend', () => {
+        reorderSrcIdx = null;
+        chainSummary.querySelectorAll('.cs-pill.drop-before')
+          .forEach(p => p.classList.remove('drop-before'));
+      });
+      pill.addEventListener('dragover', e => {
+        if (reorderSrcIdx === null || reorderSrcIdx === i) return;
+        e.preventDefault();
+        e.stopPropagation(); // don't let chain-summary bar handle it
+        chainSummary.querySelectorAll('.cs-pill.drop-before')
+          .forEach(p => p.classList.remove('drop-before'));
+        pill.classList.add('drop-before');
+      });
+      pill.addEventListener('dragleave', () => pill.classList.remove('drop-before'));
+      pill.addEventListener('drop', e => {
+        pill.classList.remove('drop-before');
+        if (reorderSrcIdx === null) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const from = reorderSrcIdx;
+        reorderSrcIdx = null;
+        reorderChain(from, i);
+      });
+
     } else {
       pill.className = 'cs-pill-empty';
       pill.textContent = `Step ${i + 1}`;
     }
+
     chainSummary.appendChild(pill);
   });
 }
@@ -1143,8 +1301,12 @@ document.querySelectorAll('.sb-section-header[data-sec]').forEach(hdr => {
 // ── Chain summary drop target (append step) ───────────────────
 chainSummary.addEventListener('dragover', e => {
   e.preventDefault();
-  e.dataTransfer.dropEffect = 'copy';
-  chainSummary.classList.add('drag-over');
+  if (reorderSrcIdx !== null) {
+    e.dataTransfer.dropEffect = 'move';
+  } else {
+    e.dataTransfer.dropEffect = 'copy';
+    chainSummary.classList.add('drag-over');
+  }
 });
 chainSummary.addEventListener('dragleave', e => {
   // Only remove if leaving the summary bar itself, not a child
@@ -1155,6 +1317,14 @@ chainSummary.addEventListener('dragleave', e => {
 chainSummary.addEventListener('drop', e => {
   e.preventDefault();
   chainSummary.classList.remove('drag-over');
+  // If this is a chain-reorder drag that landed on the bar background
+  // (not on a pill, which would have stopped propagation), move to end
+  if (reorderSrcIdx !== null) {
+    const from = reorderSrcIdx;
+    reorderSrcIdx = null;
+    reorderChain(from, chain.length - 1);
+    return;
+  }
   const op = e.dataTransfer.getData('text/plain');
   if (op && OPS[op]) {
     addStep();
@@ -1186,7 +1356,7 @@ chainInput.addEventListener('input', () => {
 });
 
 // ── Persistence ───────────────────────────────────────────────
-const SECTIONS = ['encoding','hashing','bases','transforms'];
+const SECTIONS = ['encoding','hashing','bases','transforms','ascii'];
 
 function savePrefs() {
   try {
