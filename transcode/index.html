@@ -31,9 +31,11 @@
     --text-heading: #e6edf3;
     --text-link:    #58a6ff;
 
-    --accent-blue:  #1f6feb;
-    --accent-blue-h:#388bfd;
-    --accent-green: #238636;
+    --accent-blue:   #1f6feb;
+    --accent-blue-h: #388bfd;
+    --accent-green:  #238636;
+    --accent-decode:   #e8821a;
+    --accent-decode-h: #f59e42;
 
     --sidebar-w:   290px;
     --header-h:    48px;
@@ -114,6 +116,14 @@
     background: var(--bg-active); border: 1px solid var(--accent-blue);
     color: var(--text-link); border-radius: 4px; padding: 1px 7px;
     font-size: 11px; font-family: var(--font-mono);
+  }
+  .cs-pill.decode {
+    background: rgba(232,130,26,0.12); border-color: var(--accent-decode);
+    color: var(--accent-decode);
+  }
+  #chain-summary.drag-over {
+    background: rgba(31,111,235,0.08);
+    box-shadow: inset 0 0 0 2px var(--accent-blue);
   }
   .cs-pill-empty {
     display: inline-flex; align-items: center;
@@ -200,6 +210,33 @@
     color: var(--text-link); border-radius: 4px; padding: 2px 8px;
     font-size: 12px; font-family: var(--font-mono); font-weight: 500;
   }
+  .slot-badge.decode {
+    background: rgba(232,130,26,0.15);
+    border-color: var(--accent-decode);
+    color: var(--accent-decode);
+  }
+
+  /* ── Mode toggle button (next to badge) ──────────────────────── */
+  .mode-toggle {
+    display: inline-flex; align-items: center;
+    background: var(--bg-hover); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text-muted); font-size: 10px; font-family: var(--font-mono);
+    padding: 2px 7px; cursor: pointer; height: 22px; white-space: nowrap;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    flex-shrink: 0;
+  }
+  .mode-toggle:hover:not(:disabled) {
+    background: var(--bg-active); color: var(--text); border-color: var(--accent-blue);
+  }
+  .mode-toggle.decode {
+    border-color: var(--accent-decode); color: var(--accent-decode);
+  }
+  .mode-toggle.decode:hover:not(:disabled) {
+    border-color: var(--accent-decode-h); color: var(--accent-decode-h);
+    background: rgba(232,130,26,0.12);
+  }
+  .mode-toggle:disabled { opacity: 0.45; cursor: default; }
+
   .slot-clear-btn {
     background: none; border: none; color: var(--text-muted);
     cursor: pointer; font-size: 13px; padding: 0 2px; line-height: 1;
@@ -401,7 +438,7 @@
   <!-- ── Sidebar ────────────────────────────────────────────── -->
   <aside id="sidebar">
 
-    <div class="sb-hint">Drag or click an operation to assign it to the focused slot (highlighted in blue).</div>
+    <div class="sb-hint">Drag an operation onto a slot or onto the chain bar to append a step. Click to assign to the focused slot (highlighted in blue).</div>
 
     <!-- Encoding -->
     <div class="sb-section" id="sec-encoding">
@@ -584,18 +621,26 @@ const OPS = {
   'base64': {
     label: 'Base64',
     encode: s => btoa(unescape(encodeURIComponent(s))),
+    decode: s => decodeURIComponent(escape(atob(s.trim()))),
   },
   'base64url': {
     label: 'Base64 URL-safe',
     encode: s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),
+    decode: s => {
+      const p = s.trim().replace(/-/g,'+').replace(/_/g,'/');
+      const pad = p.length % 4;
+      return decodeURIComponent(escape(atob(pad ? p + '===='.slice(pad) : p)));
+    },
   },
   'url-percent': {
     label: 'URL Percent-Encode',
     encode: s => encodeURIComponent(s),
+    decode: s => decodeURIComponent(s),
   },
   'html-entities': {
     label: 'HTML Entities',
     encode: s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'),
+    decode: s => s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'"),
   },
   'unicode-escape': {
     label: 'Unicode Escape (\\u)',
@@ -604,38 +649,48 @@ const OPS = {
       if (cp <= 127) return c;
       return cp > 0xffff ? `\\u{${cp.toString(16)}}` : `\\u${cp.toString(16).padStart(4,'0')}`;
     }).join(''),
+    decode: s => s.replace(/\\u\{([0-9a-fA-F]+)\}|\\u([0-9a-fA-F]{4})/g,
+      (_, p1, p2) => String.fromCodePoint(parseInt(p1 || p2, 16))),
   },
   'md5': {
     label: 'MD5',
     encode: s => md5(s),
+    oneWay: true,
   },
   'sha1': {
     label: 'SHA-1',
     encode: s => shaHash(s, 'SHA-1'),
+    oneWay: true,
   },
   'sha256': {
     label: 'SHA-256',
     encode: s => shaHash(s, 'SHA-256'),
+    oneWay: true,
   },
   'sha512': {
     label: 'SHA-512',
     encode: s => shaHash(s, 'SHA-512'),
+    oneWay: true,
   },
   'hex': {
     label: 'Hex',
     encode: s => [...new TextEncoder().encode(s)].map(b=>b.toString(16).padStart(2,'0')).join(' '),
+    decode: s => new TextDecoder().decode(new Uint8Array(s.trim().split(/\s+/).map(h=>parseInt(h,16)))),
   },
   'binary': {
     label: 'Binary',
     encode: s => [...new TextEncoder().encode(s)].map(b=>b.toString(2).padStart(8,'0')).join(' '),
+    decode: s => new TextDecoder().decode(new Uint8Array(s.trim().split(/\s+/).map(b=>parseInt(b,2)))),
   },
   'octal': {
     label: 'Octal',
     encode: s => [...new TextEncoder().encode(s)].map(b=>b.toString(8).padStart(3,'0')).join(' '),
+    decode: s => new TextDecoder().decode(new Uint8Array(s.trim().split(/\s+/).map(o=>parseInt(o,8)))),
   },
   'ascii': {
     label: 'ASCII Ordinals',
     encode: s => [...new TextEncoder().encode(s)].map(b=>String(b)).join(' '),
+    decode: s => new TextDecoder().decode(new Uint8Array(s.trim().split(/\s+/).map(n=>parseInt(n,10)))),
   },
   'rot13': {
     label: 'ROT13',
@@ -643,26 +698,32 @@ const OPS = {
       const b = c <= 'Z' ? 65 : 97;
       return String.fromCharCode(((c.charCodeAt(0)-b+13)%26)+b);
     }),
+    symmetric: true,
   },
   'rot47': {
     label: 'ROT47',
     encode: s => s.replace(/[!-~]/g, c => String.fromCharCode(((c.charCodeAt(0)-33+47)%94)+33)),
+    symmetric: true,
   },
   'reverse': {
     label: 'Reverse string',
     encode: s => [...s].reverse().join(''),
+    symmetric: true,
   },
   'pretty-json': {
     label: 'Pretty JSON',
     encode: s => JSON.stringify(JSON.parse(s.trim()), null, 2),
+    oneWay: true,
   },
   'minify-json': {
     label: 'Minify JSON',
     encode: s => JSON.stringify(JSON.parse(s.trim())),
+    oneWay: true,
   },
   'morse': {
     label: 'Morse Code',
     encode: s => s.toUpperCase().split('').map(c => c===' ' ? ' / ' : (MORSE_ENC[c] ? MORSE_ENC[c]+' ' : '')).join('').trim(),
+    decode: s => s.split(' / ').map(word => word.trim().split(/\s+/).map(tok => MORSE_DEC[tok] || '?').join('')).join(' '),
   },
 };
 
@@ -676,10 +737,15 @@ function renderSlot(i) {
   slotEl.onclick = null;
 
   if (op) {
+    const def = OPS[op];
+    const mode = chain[i].mode || 'encode';
+    const isDecodeMode = mode === 'decode' && !def.symmetric && !def.oneWay;
+
     slotEl.className = 'chain-slot filled';
+
     const badge = document.createElement('span');
-    badge.className = 'slot-badge';
-    badge.textContent = OPS[op].label;
+    badge.className = 'slot-badge' + (isDecodeMode ? ' decode' : '');
+    badge.textContent = def.label;
 
     const clearBtn = document.createElement('button');
     clearBtn.className = 'slot-clear-btn';
@@ -687,6 +753,23 @@ function renderSlot(i) {
     clearBtn.textContent = '×';
     clearBtn.onclick = (e) => { e.stopPropagation(); clearSlotOp(i); };
     badge.appendChild(clearBtn);
+
+    // Mode toggle button
+    const modeToggle = document.createElement('button');
+    modeToggle.className = 'mode-toggle' + (isDecodeMode ? ' decode' : '');
+    if (def.oneWay) {
+      modeToggle.textContent = 'one-way';
+      modeToggle.disabled = true;
+      modeToggle.title = 'This operation cannot be reversed';
+    } else if (def.symmetric) {
+      modeToggle.textContent = 'symmetric';
+      modeToggle.disabled = true;
+      modeToggle.title = 'Encode and decode are identical for this operation';
+    } else {
+      modeToggle.textContent = isDecodeMode ? 'DEC ⇌' : 'ENC ⇌';
+      modeToggle.title = isDecodeMode ? 'Switch to encode mode' : 'Switch to decode mode';
+      modeToggle.onclick = (e) => { e.stopPropagation(); toggleSlotMode(i); };
+    }
 
     const removeBtn = document.createElement('button');
     removeBtn.className = 'slot-remove-btn';
@@ -696,6 +779,7 @@ function renderSlot(i) {
     removeBtn.onclick = (e) => { e.stopPropagation(); removeStep(i); };
 
     slotEl.appendChild(badge);
+    slotEl.appendChild(modeToggle);
     slotEl.appendChild(removeBtn);
   } else {
     slotEl.className = 'chain-slot' + (focusedSlotIdx === i ? ' focused' : '');
@@ -811,7 +895,7 @@ function addStep() {
   chainArea.appendChild(node);
 
   const idx = chain.length;
-  chain.push({ op: null, node, slotEl, outputEl, addBtnWrap });
+  chain.push({ op: null, mode: 'encode', node, slotEl, outputEl, addBtnWrap });
 
   // Update dataset idx for all slots (in case of reindex)
   refreshSlotIndices();
@@ -879,6 +963,7 @@ function setSlotOp(i, key) {
 // ── Clear slot op ─────────────────────────────────────────────
 function clearSlotOp(i) {
   chain[i].op = null;
+  chain[i].mode = 'encode';
   // Clear this output and all downstream outputs
   for (let j = i; j < chain.length; j++) {
     chain[j].outputEl.value = '';
@@ -890,6 +975,15 @@ function clearSlotOp(i) {
   focusSlot(i);
   updateSummary();
   updateStats();
+  savePrefs();
+}
+
+// ── Toggle slot encode/decode mode ───────────────────────────
+function toggleSlotMode(i) {
+  chain[i].mode = chain[i].mode === 'decode' ? 'encode' : 'decode';
+  renderSlot(i);
+  updateSummary();
+  runChain();
   savePrefs();
 }
 
@@ -937,8 +1031,10 @@ function updateSummary() {
     }
     const pill = document.createElement('span');
     if (s.op) {
-      pill.className = 'cs-pill';
-      pill.textContent = OPS[s.op].label;
+      const def = OPS[s.op];
+      const isDecodeMode = s.mode === 'decode' && !def.symmetric && !def.oneWay;
+      pill.className = 'cs-pill' + (isDecodeMode ? ' decode' : '');
+      pill.textContent = (isDecodeMode ? '↓ ' : '↑ ') + def.label;
     } else {
       pill.className = 'cs-pill-empty';
       pill.textContent = `Step ${i + 1}`;
@@ -962,7 +1058,8 @@ async function runChain() {
     outEl.className = 'chain-output' + (isCollapsed ? ' collapsed' : '') + ' is-loading';
     outEl.value = 'Running…';
     try {
-      const result = await Promise.resolve(op.encode(prevVal));
+      const fn = (chain[i].mode === 'decode' && op.decode) ? op.decode : op.encode;
+      const result = await Promise.resolve(fn(prevVal));
       const val = typeof result === 'string' ? result : String(result);
       outEl.value = val;
       outEl.className = 'chain-output' + (isCollapsed ? ' collapsed' : '');
@@ -1043,6 +1140,28 @@ document.querySelectorAll('.sb-section-header[data-sec]').forEach(hdr => {
   });
 });
 
+// ── Chain summary drop target (append step) ───────────────────
+chainSummary.addEventListener('dragover', e => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  chainSummary.classList.add('drag-over');
+});
+chainSummary.addEventListener('dragleave', e => {
+  // Only remove if leaving the summary bar itself, not a child
+  if (!chainSummary.contains(e.relatedTarget)) {
+    chainSummary.classList.remove('drag-over');
+  }
+});
+chainSummary.addEventListener('drop', e => {
+  e.preventDefault();
+  chainSummary.classList.remove('drag-over');
+  const op = e.dataTransfer.getData('text/plain');
+  if (op && OPS[op]) {
+    addStep();
+    setSlotOp(chain.length - 1, op);
+  }
+});
+
 // ── Header buttons ────────────────────────────────────────────
 $('btn-copy-output').addEventListener('click', async () => {
   let text = '';
@@ -1072,7 +1191,7 @@ const SECTIONS = ['encoding','hashing','bases','transforms'];
 function savePrefs() {
   try {
     const p = {
-      chainOps: chain.map(s => s.op),
+      chainOps: chain.map(s => ({ op: s.op, mode: s.mode || 'encode' })),
       chainInput: chainInput.value,
     };
     SECTIONS.forEach(s => { p['sec_'+s] = $('body-'+s).classList.contains('open'); });
@@ -1098,16 +1217,24 @@ async function loadPrefs() {
 
     // Restore chain ops (at least 1 step already exists from init addStep())
     if (Array.isArray(p.chainOps) && p.chainOps.length > 0) {
+      // Normalise: support both old plain-string format and new {op,mode} format
+      const normalised = p.chainOps.map(item =>
+        item && typeof item === 'object' ? item : { op: item, mode: 'encode' }
+      );
       // Set op for first step
-      if (p.chainOps[0] && OPS[p.chainOps[0]]) {
-        chain[0].op = p.chainOps[0];
+      const first = normalised[0];
+      if (first && first.op && OPS[first.op]) {
+        chain[0].op = first.op;
+        chain[0].mode = first.mode || 'encode';
         renderSlot(0);
       }
       // Add and fill remaining steps
-      for (let i = 1; i < Math.min(p.chainOps.length, 100); i++) {
+      for (let i = 1; i < Math.min(normalised.length, 100); i++) {
         addStep();
-        if (p.chainOps[i] && OPS[p.chainOps[i]]) {
-          chain[i].op = p.chainOps[i];
+        const item = normalised[i];
+        if (item && item.op && OPS[item.op]) {
+          chain[i].op = item.op;
+          chain[i].mode = item.mode || 'encode';
           renderSlot(i);
         }
       }
