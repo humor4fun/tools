@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<!--
+  transcode — Text Encoding, Decoding & Hashing Tool
+  Author: Chris Holt
+  License: GNU Affero General Public License v3.0 (AGPL-3.0)
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  https://www.gnu.org/licenses/agpl-3.0.html
+
+  Source: https://github.com/humor4fun/tools/tree/main/transcode
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>transcode — tools.bluejar.org</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:           #0f1117;
+    --bg-sidebar:   #161b27;
+    --bg-content:   #0f1117;
+    --bg-hover:     #1e2535;
+    --bg-active:    #1e3a5f;
+    --border:       #232b3e;
+    --border-light: #1e2535;
+
+    --text:         #c9d1d9;
+    --text-muted:   #6e7a8a;
+    --text-dim:     #4a5568;
+    --text-heading: #e6edf3;
+    --text-link:    #58a6ff;
+
+    --accent-blue:  #1f6feb;
+    --accent-blue-h:#388bfd;
+    --accent-green: #238636;
+
+    --sidebar-w:   290px;
+    --header-h:    48px;
+    --dir-bar-h:   44px;
+    --statusbar-h: 38px;
+    --radius: 6px;
+    --font-mono: 'JetBrains Mono','Fira Code','Cascadia Code',ui-monospace,monospace;
+    --font-sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  }
+
+  html, body {
+    height: 100%; background: var(--bg); color: var(--text);
+    font-family: var(--font-sans); font-size: 14px; line-height: 1.5; overflow: hidden;
+  }
+
+  /* ── Layout ──────────────────────────────────────────────── */
+  #app {
+    display: grid;
+    grid-template-columns: 1fr var(--sidebar-w);
+    grid-template-rows: var(--header-h) 1fr var(--statusbar-h);
+    height: 100vh; width: 100vw;
+  }
+
+  /* ── Header ──────────────────────────────────────────────── */
+  #header {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; padding: 0 16px; gap: 10px;
+    background: var(--bg-sidebar); border-bottom: 1px solid var(--border); z-index: 10;
+  }
+  #header-logo {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 600; color: var(--text-heading);
+    letter-spacing: 0.01em; text-decoration: none;
+  }
+  #header-logo svg { flex-shrink: 0; }
+  .header-sep { color: var(--border); margin: 0 2px; font-size: 16px; }
+  #header-title {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: var(--text-heading);
+    font-family: var(--font-mono);
+  }
+  #header-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .hdr-btn {
+    display: flex; align-items: center; gap: 5px;
+    background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text-muted); font-size: 11.5px; font-family: var(--font-sans);
+    padding: 4px 10px; cursor: pointer; height: 28px; white-space: nowrap;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .hdr-btn:hover { background: var(--bg-active); color: var(--text); border-color: var(--accent-blue); }
+  #btn-hdr-gh {
+    background: none; border: none; color: var(--text-dim); font-size: 11px;
+    padding: 4px 8px; border-radius: 4px; cursor: pointer; text-decoration: none;
+    display: flex; align-items: center; gap: 5px;
+    transition: color 0.15s, background 0.15s;
+  }
+  #btn-hdr-gh:hover { color: var(--text-muted); background: var(--bg-hover); }
+
+  /* ── Main pane ───────────────────────────────────────────── */
+  #main-pane {
+    display: flex; flex-direction: column; overflow: hidden;
+    border-right: 1px solid var(--border);
+    min-height: 0;
+  }
+
+  #input-wrap, #output-wrap {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;
+  }
+
+  #output-wrap { background: #0c0f18; }
+
+  .pane-label {
+    padding: 3px 16px 3px;
+    font-size: 10px; font-weight: 600; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    background: var(--bg-sidebar); border-bottom: 1px solid var(--border-light);
+    flex-shrink: 0; display: flex; align-items: center; gap: 8px; height: 26px;
+  }
+
+  #input, #output {
+    flex: 1; width: 100%; background: transparent; color: var(--text);
+    font-family: var(--font-mono); font-size: 13px; line-height: 1.7;
+    border: none; outline: none; resize: none;
+    padding: 18px 24px; tab-size: 2;
+    white-space: pre-wrap; overflow-wrap: break-word;
+    overflow-y: auto; overflow-x: auto;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    min-height: 0;
+  }
+  #input::-webkit-scrollbar, #output::-webkit-scrollbar { width: 6px; }
+  #input::-webkit-scrollbar-thumb, #output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  #output { color: var(--text-muted); }
+  #output.is-error  { color: #f85149; }
+  #output.is-loading { color: var(--text-dim); font-style: italic; }
+
+  /* ── Direction bar ───────────────────────────────────────── */
+  #direction-bar {
+    flex-shrink: 0; height: var(--dir-bar-h);
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg-sidebar);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 0 14px;
+  }
+  .dir-btn {
+    display: flex; align-items: center; gap: 5px;
+    background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text-muted); font-size: 12px; font-family: var(--font-sans);
+    padding: 5px 12px; cursor: pointer; height: 28px; white-space: nowrap;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .dir-btn:hover:not(:disabled) { background: var(--bg-active); color: var(--text); border-color: var(--accent-blue); }
+  .dir-btn:disabled { opacity: 0.3; cursor: default; }
+  #active-op-label {
+    flex: 1; text-align: center;
+    font-size: 11px; color: var(--text-dim); font-family: var(--font-mono);
+  }
+  .dir-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; margin: 0 2px; }
+
+  /* ── Sidebar ─────────────────────────────────────────────── */
+  #sidebar {
+    background: var(--bg-sidebar); overflow-y: auto; overflow-x: hidden;
+    display: flex; flex-direction: column;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Status bar ──────────────────────────────────────────── */
+  #statusbar {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: 10px; padding: 0 14px;
+    background: var(--bg-sidebar); border-top: 1px solid var(--border);
+    font-size: 11.5px; color: var(--text-dim); flex-shrink: 0;
+  }
+  #stats { flex: 1; font-family: var(--font-mono); font-size: 11px; }
+  .sb-sep { color: var(--border); }
+
+  /* ── Sidebar sections ────────────────────────────────────── */
+  .sb-section { border-bottom: 1px solid var(--border); }
+  .sb-section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px 7px; cursor: pointer; user-select: none;
+    transition: background 0.12s;
+  }
+  .sb-section-header:hover { background: var(--bg-hover); }
+  .sb-section-title {
+    font-size: 10px; font-weight: 600; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .sb-section-title svg { opacity: 0.6; }
+  .sb-chevron { color: var(--text-dim); transition: transform 0.15s; flex-shrink: 0; }
+  .sb-chevron.open { transform: rotate(180deg); }
+  .sb-section-body { display: none; padding: 4px 8px 10px; }
+  .sb-section-body.open { display: block; }
+
+  /* ── Op buttons ──────────────────────────────────────────── */
+  .op-btn {
+    display: flex; align-items: center; width: 100%;
+    background: transparent; border: 1px solid transparent; border-radius: 5px;
+    color: var(--text-muted); font-size: 12px; font-family: var(--font-sans);
+    padding: 5px 8px; cursor: pointer; text-align: left; gap: 7px;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    margin-bottom: 1px;
+  }
+  .op-btn:hover { background: var(--bg-hover); color: var(--text); }
+  .op-btn.active {
+    background: var(--bg-active); color: var(--text-link);
+    border-color: var(--accent-blue);
+  }
+  .op-btn-note {
+    font-size: 10px; color: var(--text-dim); margin-left: auto; white-space: nowrap;
+  }
+  .op-btn.active .op-btn-note { color: var(--text-muted); }
+
+  /* ── Toast ───────────────────────────────────────────────── */
+  #toast {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%) translateY(-8px);
+    background: var(--bg-sidebar); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px 18px;
+    font-size: 12.5px; color: var(--text);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    opacity: 0; transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none; z-index: 1000; white-space: nowrap;
+  }
+  #toast.visible  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.ok   { border-color: var(--accent-green); color: #4ade80; }
+  #toast.warn { border-color: #fbbf24; color: #fbbf24; }
+  #toast.err  { border-color: #f85149; color: #f85149; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <header id="header">
+    <a id="header-logo" href="/">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="1" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.8"/>
+        <rect x="9" y="1" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.5"/>
+        <rect x="1" y="9" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.5"/>
+        <rect x="9" y="9" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.3"/>
+      </svg>
+      tools
+    </a>
+    <span class="header-sep">/</span>
+    <span id="header-title">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M1 4a.5.5 0 0 1 .5-.5h11.793l-2.147-2.146a.5.5 0 0 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L13.293 4.5H1.5A.5.5 0 0 1 1 4z"/>
+        <path d="M15 12a.5.5 0 0 1-.5.5H2.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 0 1 .708.708L2.707 11.5H14.5a.5.5 0 0 1 .5.5z"/>
+      </svg>
+      transcode
+    </span>
+    <div id="header-actions">
+      <button class="hdr-btn" id="btn-copy-output">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/></svg>
+        Copy output
+      </button>
+      <a id="btn-hdr-gh" href="https://github.com/humor4fun/tools/tree/main/transcode" target="_blank" rel="noopener">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        humor4fun/tools
+      </a>
+    </div>
+  </header>
+
+  <!-- ── Main pane ──────────────────────────────────────────── -->
+  <div id="main-pane">
+
+    <div id="input-wrap">
+      <div class="pane-label">Input</div>
+      <textarea id="input"
+        placeholder="Paste or type text to encode / decode…"
+        spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+    </div>
+
+    <div id="direction-bar">
+      <button class="dir-btn" id="btn-encode">Encode →</button>
+      <span id="active-op-label">Base64</span>
+      <button class="dir-btn" id="btn-decode">← Decode</button>
+      <div class="dir-sep"></div>
+      <button class="dir-btn" id="btn-swap">⇅ Swap</button>
+    </div>
+
+    <div id="output-wrap">
+      <div class="pane-label">Output</div>
+      <textarea id="output" readonly spellcheck="false"></textarea>
+    </div>
+
+  </div>
+
+  <!-- ── Sidebar ────────────────────────────────────────────── -->
+  <aside id="sidebar">
+
+    <!-- Encoding -->
+    <div class="sb-section" id="sec-encoding">
+      <div class="sb-section-header" data-sec="encoding">
+        <span class="sb-section-title">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M10.478 1.647a.5.5 0 1 0-.956-.294l-4 13a.5.5 0 0 0 .956.294zM4.854 4.146a.5.5 0 0 1 0 .708L1.707 8l3.147 3.146a.5.5 0 0 1-.708.708l-3.5-3.5a.5.5 0 0 1 0-.708l3.5-3.5a.5.5 0 0 1 .708 0m6.292 0a.5.5 0 0 0 0 .708L14.293 8l-3.147 3.146a.5.5 0 0 0 .708.708l3.5-3.5a.5.5 0 0 0 0-.708l-3.5-3.5a.5.5 0 0 0-.708 0"/></svg>
+          Encoding
+        </span>
+        <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="sb-section-body open" id="body-encoding">
+        <button class="op-btn active" data-op="base64">Base64</button>
+        <button class="op-btn" data-op="base64url">Base64 URL-safe</button>
+        <button class="op-btn" data-op="url-percent">URL Percent-Encode</button>
+        <button class="op-btn" data-op="html-entities">HTML Entities</button>
+        <button class="op-btn" data-op="unicode-escape">Unicode Escape (\u)</button>
+      </div>
+    </div>
+
+    <!-- Hashing -->
+    <div class="sb-section" id="sec-hashing">
+      <div class="sb-section-header" data-sec="hashing">
+        <span class="sb-section-title">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2"/></svg>
+          Hashing
+        </span>
+        <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="sb-section-body open" id="body-hashing">
+        <button class="op-btn" data-op="md5">MD5<span class="op-btn-note">file lookup ↗</span></button>
+        <button class="op-btn" data-op="sha1">SHA-1<span class="op-btn-note">file lookup ↗</span></button>
+        <button class="op-btn" data-op="sha256">SHA-256<span class="op-btn-note">file lookup ↗</span></button>
+        <button class="op-btn" data-op="sha512">SHA-512<span class="op-btn-note">one-way</span></button>
+      </div>
+    </div>
+
+    <!-- Number Bases -->
+    <div class="sb-section" id="sec-bases">
+      <div class="sb-section-header" data-sec="bases">
+        <span class="sb-section-title">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5zm8 0A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5z"/></svg>
+          Number Bases
+        </span>
+        <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="sb-section-body open" id="body-bases">
+        <button class="op-btn" data-op="hex">Hex (bytes)</button>
+        <button class="op-btn" data-op="binary">Binary (bytes)</button>
+        <button class="op-btn" data-op="octal">Octal (bytes)</button>
+        <button class="op-btn" data-op="ascii">ASCII Ordinals</button>
+      </div>
+    </div>
+
+    <!-- Text Transforms -->
+    <div class="sb-section" id="sec-transforms">
+      <div class="sb-section-header" data-sec="transforms">
+        <span class="sb-section-title">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M2.244 13.081a.5.5 0 0 1-.622.311l-.189-.063a.5.5 0 0 1-.311-.622L5.89 2.5H8.25l4.562 10.5H10l-.9-2.188H4.901zm1.862-4.5h3.788l-1.89-4.577zM9 3a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V8h2v2a1 1 0 0 0 2 0V4a1 1 0 0 0-2 0v2h-2V4a1 1 0 0 0-1-1"/></svg>
+          Text Transforms
+        </span>
+        <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="sb-section-body open" id="body-transforms">
+        <button class="op-btn" data-op="rot13">ROT13<span class="op-btn-note">symmetric</span></button>
+        <button class="op-btn" data-op="rot47">ROT47<span class="op-btn-note">symmetric</span></button>
+        <button class="op-btn" data-op="reverse">Reverse string<span class="op-btn-note">symmetric</span></button>
+        <button class="op-btn" data-op="pretty-json">Pretty JSON</button>
+        <button class="op-btn" data-op="minify-json">Minify JSON</button>
+        <button class="op-btn" data-op="morse">Morse Code</button>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── Status bar ─────────────────────────────────────────── -->
+  <div id="statusbar">
+    <span id="stats">Ready · select an operation from the sidebar</span>
+    <span class="sb-sep">·</span>
+    <span id="hash-note" style="font-size:10px;color:var(--text-dim);display:none">Hash decode uses CIRCL hashlookup (requires network)</span>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+// ── DOM refs ──────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const inputEl  = $('input');
+const outputEl = $('output');
+const statsEl  = $('stats');
+const toastEl  = $('toast');
+const activeOpLbl = $('active-op-label');
+const btnEncode   = $('btn-encode');
+const btnDecode   = $('btn-decode');
+const btnSwap     = $('btn-swap');
+const hashNote    = $('hash-note');
+
+// ── State ─────────────────────────────────────────────────────
+let activeOp = 'base64';
+
+// ── Morse tables ──────────────────────────────────────────────
+const MORSE_ENC = {
+  A:'.-',B:'-...',C:'-.-.',D:'-..',E:'.',F:'..-.',G:'--.',H:'....',
+  I:'..',J:'.---',K:'-.-',L:'.-..',M:'--',N:'-.',O:'---',P:'.--.',
+  Q:'--.-',R:'.-.',S:'...',T:'-',U:'..-',V:'...-',W:'.--',X:'-..-',
+  Y:'-.--',Z:'--..',
+  '0':'-----','1':'.----','2':'..---','3':'...--','4':'....-',
+  '5':'.....','6':'-....','7':'--...','8':'---..','9':'----.',
+  '.':'.-.-.-',',':'--..--','?':'..--..','\'':'.----.',
+  '!':'-.-.--','/':'-..-.','(':'-.--.',')'  :'-.--.-',
+  '&':'.-...',':':'---...',';':'-.-.-.','=':'-...-',
+  '+':'.-.-.', '-':'-....-','_':'..--.-','"':'.-..-.','@':'.--.-.'
+};
+const MORSE_DEC = Object.fromEntries(Object.entries(MORSE_ENC).map(([k,v])=>[v,k]));
+
+// ── MD5 pure-JS ───────────────────────────────────────────────
+function md5(str) {
+  const hc = '0123456789abcdef';
+  function rh(n){let s='';for(let j=0;j<=3;j++)s+=hc[(n>>(j*8+4))&0xf]+hc[(n>>(j*8))&0xf];return s;}
+  function ad(x,y){const l=(x&0xffff)+(y&0xffff),m=(x>>16)+(y>>16)+(l>>16);return(m<<16)|(l&0xffff);}
+  function rl(n,c){return(n<<c)|(n>>>(32-c));}
+  function cm(q,a,b,x,s,t){return ad(rl(ad(ad(a,q),ad(x,t)),s),b);}
+  function ff(a,b,c,d,x,s,t){return cm((b&c)|(~b&d),a,b,x,s,t);}
+  function gg(a,b,c,d,x,s,t){return cm((b&d)|(c&~d),a,b,x,s,t);}
+  function hh(a,b,c,d,x,s,t){return cm(b^c^d,a,b,x,s,t);}
+  function ii(a,b,c,d,x,s,t){return cm(c^(b|~d),a,b,x,s,t);}
+  function sb(x){
+    const n=((x.length+8)>>6)+1,b=new Array(n*16).fill(0);
+    for(let i=0;i<x.length;i++)b[i>>2]|=x.charCodeAt(i)<<((i%4)*8);
+    b[x.length>>2]|=0x80<<((x.length%4)*8);b[n*16-2]=x.length*8;return b;
+  }
+  const x=sb(unescape(encodeURIComponent(str)));
+  let a=1732584193,b=-271733879,c=-1732584194,d=271733878;
+  for(let i=0;i<x.length;i+=16){
+    let [oa,ob,oc,od]=[a,b,c,d];
+    a=ff(a,b,c,d,x[i+0],7,-680876936);  d=ff(d,a,b,c,x[i+1],12,-389564586);
+    c=ff(c,d,a,b,x[i+2],17,606105819);  b=ff(b,c,d,a,x[i+3],22,-1044525330);
+    a=ff(a,b,c,d,x[i+4],7,-176418897);  d=ff(d,a,b,c,x[i+5],12,1200080426);
+    c=ff(c,d,a,b,x[i+6],17,-1473231341);b=ff(b,c,d,a,x[i+7],22,-45705983);
+    a=ff(a,b,c,d,x[i+8],7,1770035416); d=ff(d,a,b,c,x[i+9],12,-1958414417);
+    c=ff(c,d,a,b,x[i+10],17,-42063);   b=ff(b,c,d,a,x[i+11],22,-1990404162);
+    a=ff(a,b,c,d,x[i+12],7,1804603682);d=ff(d,a,b,c,x[i+13],12,-40341101);
+    c=ff(c,d,a,b,x[i+14],17,-1502002290);b=ff(b,c,d,a,x[i+15],22,1236535329);
+    a=gg(a,b,c,d,x[i+1],5,-165796510); d=gg(d,a,b,c,x[i+6],9,-1069501632);
+    c=gg(c,d,a,b,x[i+11],14,643717713);b=gg(b,c,d,a,x[i+0],20,-373897302);
+    a=gg(a,b,c,d,x[i+5],5,-701558691); d=gg(d,a,b,c,x[i+10],9,38016083);
+    c=gg(c,d,a,b,x[i+15],14,-660478335);b=gg(b,c,d,a,x[i+4],20,-405537848);
+    a=gg(a,b,c,d,x[i+9],5,568446438); d=gg(d,a,b,c,x[i+14],9,-1019803690);
+    c=gg(c,d,a,b,x[i+3],14,-187363961);b=gg(b,c,d,a,x[i+8],20,1163531501);
+    a=gg(a,b,c,d,x[i+13],5,-1444681467);d=gg(d,a,b,c,x[i+2],9,-51403784);
+    c=gg(c,d,a,b,x[i+7],14,1735328473);b=gg(b,c,d,a,x[i+12],20,-1926607734);
+    a=hh(a,b,c,d,x[i+5],4,-378558);    d=hh(d,a,b,c,x[i+8],11,-2022574463);
+    c=hh(c,d,a,b,x[i+11],16,1839030562);b=hh(b,c,d,a,x[i+14],23,-35309556);
+    a=hh(a,b,c,d,x[i+1],4,-1530992060);d=hh(d,a,b,c,x[i+4],11,1272893353);
+    c=hh(c,d,a,b,x[i+7],16,-155497632);b=hh(b,c,d,a,x[i+10],23,-1094730640);
+    a=hh(a,b,c,d,x[i+13],4,681279174); d=hh(d,a,b,c,x[i+0],11,-358537222);
+    c=hh(c,d,a,b,x[i+3],16,-722521979);b=hh(b,c,d,a,x[i+6],23,76029189);
+    a=hh(a,b,c,d,x[i+9],4,-640364487); d=hh(d,a,b,c,x[i+12],11,-421815835);
+    c=hh(c,d,a,b,x[i+15],16,530742520);b=hh(b,c,d,a,x[i+2],23,-995338651);
+    a=ii(a,b,c,d,x[i+0],6,-198630844); d=ii(d,a,b,c,x[i+7],10,1126891415);
+    c=ii(c,d,a,b,x[i+14],15,-1416354905);b=ii(b,c,d,a,x[i+5],21,-57434055);
+    a=ii(a,b,c,d,x[i+12],6,1700485571);d=ii(d,a,b,c,x[i+3],10,-1894986606);
+    c=ii(c,d,a,b,x[i+10],15,-1051523); b=ii(b,c,d,a,x[i+1],21,-2054922799);
+    a=ii(a,b,c,d,x[i+8],6,1873313359); d=ii(d,a,b,c,x[i+15],10,-30611744);
+    c=ii(c,d,a,b,x[i+6],15,-1560198380);b=ii(b,c,d,a,x[i+13],21,1309151649);
+    a=ii(a,b,c,d,x[i+4],6,-145523070); d=ii(d,a,b,c,x[i+11],10,-1120210379);
+    c=ii(c,d,a,b,x[i+2],15,718787259); b=ii(b,c,d,a,x[i+9],21,-343485551);
+    a=ad(a,oa);b=ad(b,ob);c=ad(c,oc);d=ad(d,od);
+  }
+  return rh(a)+rh(b)+rh(c)+rh(d);
+}
+
+// ── SHA via WebCrypto ─────────────────────────────────────────
+async function shaHash(str, algo) {
+  const buf = await crypto.subtle.digest(algo, new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── CIRCL hashlookup ──────────────────────────────────────────
+// Public file-hash database: NSRL + Ubuntu/Kali/OpenSUSE packages + CDNJS etc.
+// Returns file metadata if hash matches a known file; 404 if not found.
+async function circlLookup(hash, type) {
+  const clean = hash.trim().replace(/\s/g, '');
+  const url = `https://hashlookup.circl.lu/lookup/${type}/${clean.toUpperCase()}`;
+  let res;
+  try {
+    res = await fetch(url, { headers: { accept: 'application/json' } });
+  } catch(e) {
+    throw new Error(`Network error reaching CIRCL API — check your connection. (${e.message})`);
+  }
+  if (res.status === 404) {
+    return `Not found in CIRCL hashlookup database.\n\nThe hash "${clean}" does not match any known file in NSRL, Ubuntu, Kali, or other indexed sources.`;
+  }
+  if (res.status === 400) {
+    return `Invalid hash format (HTTP 400). Expected a ${type.toUpperCase()} hash.`;
+  }
+  if (!res.ok) throw new Error(`CIRCL API returned HTTP ${res.status}`);
+  const d = await res.json();
+  const lines = [
+    `Source:      CIRCL hashlookup`,
+    `Trust:       ${d['hashlookup:trust'] !== undefined ? d['hashlookup:trust']+'/100' : 'n/a'}`,
+    '',
+  ];
+  if (d.FileName)   lines.push(`FileName:    ${d.FileName}`);
+  if (d.FileSize)   lines.push(`FileSize:    ${Number(d.FileSize).toLocaleString()} bytes`);
+  const pn = d.ProductCode?.ProductName || d.ProductName;
+  const pv = d.ProductCode?.ProductVersion || d.ProductVersion;
+  if (pn) lines.push(`Product:     ${pn}${pv ? ' ' + pv : ''}`);
+  if (d.source)     lines.push(`DB Source:   ${d.source}`);
+  if (d.db)         lines.push(`DB:          ${d.db}`);
+  lines.push('');
+  if (d.MD5)        lines.push(`MD5:         ${d.MD5}`);
+  if (d['SHA-1'])   lines.push(`SHA-1:       ${d['SHA-1']}`);
+  if (d['SHA-256']) lines.push(`SHA-256:     ${d['SHA-256']}`);
+  if (d.CRC32)      lines.push(`CRC32:       ${d.CRC32}`);
+  return lines.filter((l,i,a) => !(l===''&&(i===0||a[i-1]===''))).join('\n');
+}
+
+// ── Operations map ────────────────────────────────────────────
+const OPS = {
+  // ── Encoding ────────────────────────────────
+  'base64': {
+    label: 'Base64',
+    encode: s => btoa(unescape(encodeURIComponent(s))),
+    decode: s => decodeURIComponent(escape(atob(s.trim().replace(/\s/g, '')))),
+  },
+  'base64url': {
+    label: 'Base64 URL-safe',
+    encode: s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),
+    decode: s => {
+      let t = s.trim().replace(/\s/g,'').replace(/-/g,'+').replace(/_/g,'/');
+      while (t.length % 4) t += '=';
+      return decodeURIComponent(escape(atob(t)));
+    },
+  },
+  'url-percent': {
+    label: 'URL Percent-Encode',
+    encode: s => encodeURIComponent(s),
+    decode: s => decodeURIComponent(s),
+  },
+  'html-entities': {
+    label: 'HTML Entities',
+    encode: s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'),
+    decode: s => { const d=document.createElement('div'); d.innerHTML=s; return d.textContent; },
+  },
+  'unicode-escape': {
+    label: 'Unicode Escape (\\u)',
+    encode: s => [...s].map(c => {
+      const cp = c.codePointAt(0);
+      if (cp <= 127) return c;
+      return cp > 0xffff ? `\\u{${cp.toString(16)}}` : `\\u${cp.toString(16).padStart(4,'0')}`;
+    }).join(''),
+    decode: s => s
+      .replace(/\\u\{([0-9a-fA-F]+)\}/g, (_,h) => String.fromCodePoint(parseInt(h,16)))
+      .replace(/\\u([0-9a-fA-F]{4})/g,   (_,h) => String.fromCharCode(parseInt(h,16))),
+  },
+
+  // ── Hashing ─────────────────────────────────
+  'md5': {
+    label: 'MD5',
+    encode: s => md5(s),
+    decode: null, lookupType: 'md5',
+  },
+  'sha1': {
+    label: 'SHA-1',
+    encode: s => shaHash(s, 'SHA-1'),
+    decode: null, lookupType: 'sha1',
+  },
+  'sha256': {
+    label: 'SHA-256',
+    encode: s => shaHash(s, 'SHA-256'),
+    decode: null, lookupType: 'sha256',
+  },
+  'sha512': {
+    label: 'SHA-512',
+    encode: s => shaHash(s, 'SHA-512'),
+    decode: null, lookupType: null, // CIRCL doesn't index SHA-512
+  },
+
+  // ── Number bases ─────────────────────────────
+  'hex': {
+    label: 'Hex',
+    encode: s => [...new TextEncoder().encode(s)].map(b=>b.toString(16).padStart(2,'0')).join(' '),
+    decode: s => {
+      const bytes = s.trim().split(/\s+/).map(h=>parseInt(h,16));
+      if (bytes.some(isNaN)) throw new Error('Invalid hex — expected space-separated hex bytes');
+      return new TextDecoder().decode(new Uint8Array(bytes));
+    },
+  },
+  'binary': {
+    label: 'Binary',
+    encode: s => [...new TextEncoder().encode(s)].map(b=>b.toString(2).padStart(8,'0')).join(' '),
+    decode: s => {
+      const bytes = s.trim().split(/\s+/).map(b=>parseInt(b,2));
+      if (bytes.some(isNaN)) throw new Error('Invalid binary — expected space-separated 8-bit groups');
+      return new TextDecoder().decode(new Uint8Array(bytes));
+    },
+  },
+  'octal': {
+    label: 'Octal',
+    encode: s => [...new TextEncoder().encode(s)].map(b=>b.toString(8).padStart(3,'0')).join(' '),
+    decode: s => {
+      const bytes = s.trim().split(/\s+/).map(o=>parseInt(o,8));
+      if (bytes.some(isNaN)) throw new Error('Invalid octal — expected space-separated octal bytes');
+      return new TextDecoder().decode(new Uint8Array(bytes));
+    },
+  },
+  'ascii': {
+    label: 'ASCII Ordinals',
+    encode: s => [...new TextEncoder().encode(s)].map(b=>String(b)).join(' '),
+    decode: s => {
+      const bytes = s.trim().split(/\s+/).map(n=>parseInt(n,10));
+      if (bytes.some(isNaN)) throw new Error('Invalid ordinals — expected space-separated decimal numbers');
+      return new TextDecoder().decode(new Uint8Array(bytes));
+    },
+  },
+
+  // ── Text transforms ──────────────────────────
+  'rot13': {
+    label: 'ROT13',
+    symmetric: true,
+    encode: s => s.replace(/[a-zA-Z]/g, c => {
+      const b = c <= 'Z' ? 65 : 97;
+      return String.fromCharCode(((c.charCodeAt(0)-b+13)%26)+b);
+    }),
+  },
+  'rot47': {
+    label: 'ROT47',
+    symmetric: true,
+    encode: s => s.replace(/[!-~]/g, c => String.fromCharCode(((c.charCodeAt(0)-33+47)%94)+33)),
+  },
+  'reverse': {
+    label: 'Reverse string',
+    symmetric: true,
+    encode: s => [...s].reverse().join(''),
+  },
+  'pretty-json': {
+    label: 'Pretty JSON',
+    encode: s => JSON.stringify(JSON.parse(s.trim()), null, 2),
+    decode: s => JSON.stringify(JSON.parse(s.trim())),
+  },
+  'minify-json': {
+    label: 'Minify JSON',
+    encode: s => JSON.stringify(JSON.parse(s.trim())),
+    decode: s => JSON.stringify(JSON.parse(s.trim()), null, 2),
+  },
+  'morse': {
+    label: 'Morse Code',
+    encode: s => s.toUpperCase().split('').map(c => c===' ' ? ' / ' : (MORSE_ENC[c] ? MORSE_ENC[c]+' ' : '')).join('').trim(),
+    decode: s => s.trim().split(/\s*\/\s*/).map(word =>
+      word.trim().split(/\s+/).map(code => MORSE_DEC[code] || '?').join('')
+    ).join(' '),
+  },
+};
+
+// ── Set active operation ──────────────────────────────────────
+function setActiveOp(key) {
+  activeOp = key;
+  const op = OPS[key];
+  if (!op) return;
+
+  activeOpLbl.textContent = op.label;
+
+  // Highlight selected button
+  document.querySelectorAll('.op-btn[data-op]').forEach(b => {
+    b.classList.toggle('active', b.dataset.op === key);
+  });
+
+  // Configure decode button
+  if (op.symmetric) {
+    btnDecode.textContent = '⇄ Symmetric';
+    btnDecode.disabled = false;
+  } else if (op.lookupType) {
+    btnDecode.textContent = '← File Lookup (CIRCL)';
+    btnDecode.disabled = false;
+  } else if (op.decode) {
+    btnDecode.textContent = '← Decode';
+    btnDecode.disabled = false;
+  } else {
+    // SHA-512 or no decode path
+    btnDecode.textContent = '← No lookup';
+    btnDecode.disabled = true;
+  }
+
+  // Show/hide hash note
+  hashNote.style.display = (op.lookupType) ? '' : 'none';
+
+  updateStats();
+  savePrefs();
+}
+
+// ── Run encode or decode ──────────────────────────────────────
+async function runDir(dir) {
+  const op = OPS[activeOp];
+  if (!op) return;
+
+  const text = inputEl.value;
+  if (!text.trim()) { toast('Nothing in input', 'warn'); return; }
+
+  outputEl.className = 'is-loading';
+  outputEl.value = dir === 'encode' ? 'Encoding…' : 'Looking up…';
+  btnEncode.disabled = true;
+  btnDecode.disabled = true;
+  btnSwap.disabled = true;
+
+  try {
+    let result;
+
+    if (dir === 'encode') {
+      result = await Promise.resolve(op.encode(text));
+    } else {
+      // decode direction
+      if (op.symmetric) {
+        result = await Promise.resolve(op.encode(text));
+      } else if (op.lookupType) {
+        result = await circlLookup(text, op.lookupType);
+      } else if (op.decode) {
+        result = await Promise.resolve(op.decode(text));
+      } else {
+        toast('No decode available for this operation', 'warn');
+        outputEl.value = '';
+        outputEl.className = '';
+        return;
+      }
+    }
+
+    outputEl.value = typeof result === 'string' ? result : String(result);
+    outputEl.className = '';
+  } catch (e) {
+    outputEl.value = `Error: ${e.message}`;
+    outputEl.className = 'is-error';
+    toast(e.message.slice(0, 80), 'err');
+  } finally {
+    btnEncode.disabled = false;
+    btnSwap.disabled = false;
+    // Only re-enable decode if it was enabled before
+    const op2 = OPS[activeOp];
+    btnDecode.disabled = !(op2?.symmetric || op2?.lookupType || op2?.decode);
+    updateStats();
+  }
+}
+
+// ── Swap ──────────────────────────────────────────────────────
+btnSwap.addEventListener('click', () => {
+  const tmp = inputEl.value;
+  inputEl.value = outputEl.value;
+  outputEl.value = tmp;
+  if (outputEl.className === 'is-error') outputEl.className = '';
+  updateStats();
+});
+
+// ── Button wires ──────────────────────────────────────────────
+btnEncode.addEventListener('click', () => runDir('encode'));
+btnDecode.addEventListener('click', () => { if (!btnDecode.disabled) runDir('decode'); });
+
+// ── Sidebar op buttons ────────────────────────────────────────
+document.querySelectorAll('.op-btn[data-op]').forEach(btn => {
+  btn.addEventListener('click', () => setActiveOp(btn.dataset.op));
+});
+
+// ── Sidebar collapse ──────────────────────────────────────────
+document.querySelectorAll('.sb-section-header[data-sec]').forEach(hdr => {
+  hdr.addEventListener('click', () => {
+    const body = $('body-' + hdr.dataset.sec);
+    const chev = hdr.querySelector('.sb-chevron');
+    body.classList.toggle('open');
+    chev.classList.toggle('open');
+    savePrefs();
+  });
+});
+
+// ── Copy output ───────────────────────────────────────────────
+$('btn-copy-output').addEventListener('click', async () => {
+  const text = outputEl.value;
+  if (!text) { toast('Nothing to copy', 'warn'); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Output copied', 'ok');
+  } catch(e) {
+    toast('Copy failed — check browser permissions', 'err');
+  }
+});
+
+// ── Stats ─────────────────────────────────────────────────────
+function updateStats() {
+  const ic = inputEl.value.length, oc = outputEl.value.length;
+  const op = OPS[activeOp];
+  statsEl.textContent = `${op?.label || activeOp} · in: ${ic.toLocaleString()} chars · out: ${oc.toLocaleString()} chars`;
+}
+
+inputEl.addEventListener('input', updateStats);
+
+// ── Toast ─────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type = '') {
+  clearTimeout(toastTimer);
+  toastEl.textContent = msg;
+  toastEl.className = 'visible' + (type ? ' ' + type : '');
+  toastTimer = setTimeout(() => { toastEl.className = ''; }, 2600);
+}
+
+// ── Persistence ───────────────────────────────────────────────
+const SECTIONS = ['encoding','hashing','bases','transforms'];
+
+function savePrefs() {
+  try {
+    const p = { activeOp };
+    SECTIONS.forEach(s => { p['sec_'+s] = $('body-'+s).classList.contains('open'); });
+    localStorage.setItem('transcode_prefs', JSON.stringify(p));
+  } catch(e) {}
+}
+
+function loadPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem('transcode_prefs') || '{}');
+    if (p.activeOp && OPS[p.activeOp]) setActiveOp(p.activeOp);
+    SECTIONS.forEach(s => {
+      if (p['sec_'+s] === false) {
+        $('body-'+s).classList.remove('open');
+        const hdr = $('sec-'+s).querySelector('.sb-chevron');
+        if (hdr) hdr.classList.remove('open');
+      }
+    });
+  } catch(e) {}
+}
+
+// ── Init ──────────────────────────────────────────────────────
+loadPrefs();
+if (!localStorage.getItem('transcode_prefs')) setActiveOp('base64');
+updateStats();
+</script>
+</body>
+</html>

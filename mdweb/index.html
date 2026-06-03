@@ -83,7 +83,7 @@
     text-decoration: none;
   }
   .header-sep { color: var(--border); margin: 0 2px; font-size: 16px; }
-  #header-title { font-size: 13px; font-weight: 600; color: var(--text-heading); font-family: var(--font-mono); }
+  #header-title { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text-heading); font-family: var(--font-mono); }
   #header-path-chips {
     display: flex; align-items: center; gap: 3px; flex: 1;
     overflow-x: auto; overflow-y: hidden; min-width: 0;
@@ -803,15 +803,23 @@
   <header id="header">
     <a id="header-logo" href="/">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="1" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.8"/>
+        <rect x="9" y="1" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.5"/>
+        <rect x="1" y="9" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.5"/>
+        <rect x="9" y="9" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.3"/>
+      </svg>
+      tools
+    </a>
+    <span class="header-sep">/</span>
+    <span id="header-title">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
         <path d="M3 1h7l3 3v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z" fill="#58a6ff" opacity="0.25" stroke="#58a6ff" stroke-width="1"/>
         <path d="M10 1v3h3" stroke="#58a6ff" stroke-width="1" fill="none"/>
         <line x1="4" y1="7" x2="11" y2="7" stroke="#58a6ff" stroke-width="1.2" stroke-linecap="round"/>
         <line x1="4" y1="10" x2="9" y2="10" stroke="#58a6ff" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
       </svg>
-      tools
-    </a>
-    <span class="header-sep">/</span>
-    <span id="header-title">mdweb</span>
+      mdweb
+    </span>
     <div id="header-path-chips"></div>
     <button id="btn-toggle-log" title="Toggle activity log">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3a2 2 0 0 0-2 2v.5H2a1 1 0 0 0-1 1V13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-1V5a2 2 0 0 0-2-2H5zm7 2.5V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v.5h8zM2 7.5h12V13H2V7.5zm2 2a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5z"/></svg>
@@ -880,10 +888,14 @@
 
     <div id="welcome-content">
       <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="opacity:0.25">
-        <rect x="4" y="4" width="18" height="18" rx="3" fill="#58a6ff"/>
-        <rect x="26" y="4" width="18" height="18" rx="3" fill="#58a6ff" opacity="0.6"/>
-        <rect x="4" y="26" width="18" height="18" rx="3" fill="#58a6ff" opacity="0.6"/>
-        <rect x="26" y="26" width="18" height="18" rx="3" fill="#58a6ff" opacity="0.3"/>
+        <!-- page body -->
+        <path d="M8 2h22l12 12v32a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#58a6ff" opacity="0.3" stroke="#58a6ff" stroke-width="2"/>
+        <!-- folded corner -->
+        <path d="M30 2v12h12" stroke="#58a6ff" stroke-width="2" fill="none"/>
+        <!-- text lines -->
+        <line x1="13" y1="24" x2="35" y2="24" stroke="#58a6ff" stroke-width="3" stroke-linecap="round"/>
+        <line x1="13" y1="32" x2="35" y2="32" stroke="#58a6ff" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+        <line x1="13" y1="40" x2="26" y2="40" stroke="#58a6ff" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
       </svg>
       <h1>mdweb</h1>
       <p>Open a folder to browse and read its text files. Use the button in the sidebar to get started.</p>
@@ -1568,12 +1580,18 @@ async function addWorkspace(handle) {
   ws.visibleSubtypes = getAllSubtypes();
   ws.tree = { name: handle.name, children: {}, files: [], path: '', handle };
 
-  sidebarWelcome.style.display = 'none';
+  // Show loading spinner; hide welcome screen if it is currently visible
+  const wasWelcome = state.workspaces.length === 0;
+  if (wasWelcome) sidebarWelcome.style.display = 'none';
   folderLoading.classList.add('visible');
+  let walkOk = false;
   try {
     await walkDir(handle, ws.tree, ws.files, ws.dirs);
+    walkOk = true;
   } finally {
     folderLoading.classList.remove('visible');
+    // Only restore the welcome screen if walkDir failed (success path goes through _activateWorkspace)
+    if (!walkOk && wasWelcome) sidebarWelcome.style.display = '';
   }
 
   state.workspaces.push(ws);
