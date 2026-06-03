@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<!--
+  listops — List Sort, Clean & Transform Tool
+  Author: Chris Holt
+  License: GNU Affero General Public License v3.0 (AGPL-3.0)
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  https://www.gnu.org/licenses/agpl-3.0.html
+
+  Source: https://github.com/humor4fun/tools/tree/main/listops
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>listops — tools.bluejar.org</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:           #0f1117;
+    --bg-sidebar:   #161b27;
+    --bg-content:   #0f1117;
+    --bg-hover:     #1e2535;
+    --bg-active:    #1e3a5f;
+    --border:       #232b3e;
+    --border-light: #1e2535;
+
+    --text:         #c9d1d9;
+    --text-muted:   #6e7a8a;
+    --text-dim:     #4a5568;
+    --text-heading: #e6edf3;
+    --text-link:    #58a6ff;
+
+    --accent-blue:  #1f6feb;
+    --accent-blue-h:#388bfd;
+    --accent-green: #238636;
+
+    --sidebar-w: 290px;
+    --header-h:  48px;
+    --statusbar-h: 38px;
+    --radius: 6px;
+    --font-mono: 'JetBrains Mono','Fira Code','Cascadia Code',ui-monospace,monospace;
+    --font-sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  }
+
+  html, body {
+    height: 100%; background: var(--bg); color: var(--text);
+    font-family: var(--font-sans); font-size: 14px; line-height: 1.5; overflow: hidden;
+  }
+
+  /* ── Layout ──────────────────────────────────────────────── */
+  #app {
+    display: grid;
+    grid-template-columns: 1fr var(--sidebar-w);
+    grid-template-rows: var(--header-h) 1fr var(--statusbar-h);
+    height: 100vh; width: 100vw;
+  }
+
+  /* ── Header ──────────────────────────────────────────────── */
+  #header {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; padding: 0 16px; gap: 10px;
+    background: var(--bg-sidebar); border-bottom: 1px solid var(--border); z-index: 10;
+  }
+  #header-logo {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 600; color: var(--text-heading);
+    letter-spacing: 0.01em; text-decoration: none;
+  }
+  #header-logo svg { flex-shrink: 0; }
+  .header-sep { color: var(--border); margin: 0 2px; font-size: 16px; }
+  #header-title {
+    font-size: 13px; font-weight: 600; color: var(--text-heading);
+    font-family: var(--font-mono);
+  }
+  #header-actions {
+    margin-left: auto; display: flex; align-items: center; gap: 6px;
+  }
+  .hdr-btn {
+    display: flex; align-items: center; gap: 5px;
+    background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text-muted); font-size: 11.5px; font-family: var(--font-sans);
+    padding: 4px 10px; cursor: pointer; height: 28px; white-space: nowrap;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .hdr-btn:hover { background: var(--bg-active); color: var(--text); border-color: var(--accent-blue); }
+  .hdr-btn.ok { color: #4ade80; border-color: var(--accent-green); }
+  #btn-hdr-gh {
+    background: none; border: none; color: var(--text-dim); font-size: 11px;
+    padding: 4px 8px; border-radius: 4px; cursor: pointer; text-decoration: none;
+    display: flex; align-items: center; gap: 5px;
+    transition: color 0.15s, background 0.15s;
+  }
+  #btn-hdr-gh:hover { color: var(--text-muted); background: var(--bg-hover); }
+
+  /* ── Textarea pane ───────────────────────────────────────── */
+  #editor-pane {
+    background: var(--bg-content); display: flex; flex-direction: column; overflow: hidden;
+    border-right: 1px solid var(--border);
+  }
+  #editor {
+    flex: 1; width: 100%; background: var(--bg); color: var(--text);
+    font-family: var(--font-mono); font-size: 13px; line-height: 1.7;
+    border: none; outline: none; resize: none;
+    padding: 24px 28px; tab-size: 2;
+    white-space: pre-wrap; overflow-wrap: break-word;
+    overflow-y: auto; overflow-x: auto;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  #editor::-webkit-scrollbar { width: 6px; }
+  #editor::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── Sidebar ─────────────────────────────────────────────── */
+  #sidebar {
+    background: var(--bg-sidebar); overflow-y: auto; overflow-x: hidden;
+    display: flex; flex-direction: column;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Status bar ──────────────────────────────────────────── */
+  #statusbar {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: 10px; padding: 0 14px;
+    background: var(--bg-sidebar); border-top: 1px solid var(--border);
+    font-size: 11.5px; color: var(--text-dim); flex-shrink: 0;
+  }
+  #stats { flex: 1; font-family: var(--font-mono); font-size: 11px; }
+  .sb-sep { color: var(--border); }
+  .sb-btn {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--bg-hover); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text-muted); font-size: 11px; font-family: var(--font-sans);
+    padding: 3px 9px; cursor: pointer; height: 24px;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .sb-btn:hover:not(:disabled) { color: var(--text); background: var(--bg-active); border-color: var(--accent-blue); }
+  .sb-btn:disabled { opacity: 0.35; cursor: default; }
+  #stack-label { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+  #stack-input {
+    width: 46px; background: var(--bg-hover); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text); font-size: 11px; font-family: var(--font-mono);
+    padding: 2px 6px; text-align: center; outline: none;
+  }
+  #stack-input:focus { border-color: var(--accent-blue); }
+
+  /* ── Sidebar sections ────────────────────────────────────── */
+  .sb-section { border-bottom: 1px solid var(--border); }
+  .sb-section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px 7px; cursor: pointer; user-select: none;
+    transition: background 0.12s;
+  }
+  .sb-section-header:hover { background: var(--bg-hover); }
+  .sb-section-title {
+    font-size: 10px; font-weight: 600; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .sb-section-title svg { opacity: 0.6; }
+  .sb-chevron { color: var(--text-dim); transition: transform 0.15s; flex-shrink: 0; }
+  .sb-chevron.open { transform: rotate(180deg); }
+  .sb-section-body { display: none; padding: 4px 8px 10px; }
+  .sb-section-body.open { display: block; }
+
+  /* ── Separator panel ─────────────────────────────────────── */
+  #sep-panel { padding: 10px 12px 12px; border-bottom: 1px solid var(--border); }
+  .sep-row { margin-bottom: 8px; }
+  .sep-row:last-child { margin-bottom: 0; }
+  .sep-label {
+    font-size: 10px; font-weight: 600; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px;
+  }
+  .sep-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+  .sep-pill {
+    display: inline-flex; align-items: center; padding: 3px 9px;
+    border: 1px solid var(--border); border-radius: 100px;
+    font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);
+    cursor: pointer; background: var(--bg-hover); white-space: nowrap;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    user-select: none;
+  }
+  .sep-pill:hover { background: var(--bg-active); color: var(--text); }
+  .sep-pill.active { background: var(--bg-active); color: var(--text-link); border-color: var(--accent-blue); }
+  .sep-custom-input {
+    margin-top: 5px; background: var(--bg-hover); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text); font-size: 12px; font-family: var(--font-mono);
+    padding: 3px 8px; width: 100%; outline: none; display: none;
+  }
+  .sep-custom-input.visible { display: block; }
+  .sep-custom-input:focus { border-color: var(--accent-blue); }
+
+  /* ── Operation buttons ───────────────────────────────────── */
+  .op-btn {
+    display: flex; align-items: center; width: 100%;
+    background: transparent; border: none; border-radius: 5px;
+    color: var(--text-muted); font-size: 12px; font-family: var(--font-sans);
+    padding: 5px 8px; cursor: pointer; text-align: left; gap: 7px;
+    transition: background 0.12s, color 0.12s;
+    margin-bottom: 1px;
+  }
+  .op-btn:hover { background: var(--bg-hover); color: var(--text); }
+  .op-btn:active { background: var(--bg-active); }
+  .op-btn svg { flex-shrink: 0; opacity: 0.6; }
+  .op-btn-note {
+    font-size: 10px; color: var(--text-dim); margin-left: auto; white-space: nowrap;
+  }
+
+  /* ── Replace sub-form ────────────────────────────────────── */
+  .sub-form { padding: 2px 2px 6px; }
+  .sub-form input[type="text"] {
+    width: 100%; background: var(--bg-hover); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text); font-size: 12px; font-family: var(--font-mono);
+    padding: 4px 8px; outline: none; margin-bottom: 5px; display: block;
+  }
+  .sub-form input[type="text"]:focus { border-color: var(--accent-blue); }
+  .sub-form input[type="text"]::placeholder { color: var(--text-dim); }
+  .sub-form-row {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  }
+  .sub-form-check {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; color: var(--text-muted); cursor: pointer; user-select: none;
+  }
+  .sub-form-check input { accent-color: var(--accent-blue); cursor: pointer; }
+  .sub-form-apply {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; background: var(--accent-blue); border: none; border-radius: 5px;
+    color: #fff; font-size: 12px; font-family: var(--font-sans);
+    padding: 5px 0; cursor: pointer; transition: background 0.15s;
+  }
+  .sub-form-apply:hover { background: var(--accent-blue-h); }
+
+  /* ── Labels sub-form ─────────────────────────────────────── */
+  .label-mode-row {
+    display: flex; gap: 4px; margin-bottom: 8px;
+  }
+  .label-mode-btn {
+    flex: 1; text-align: center; padding: 4px 0; font-size: 11px;
+    border: 1px solid var(--border); border-radius: 4px; cursor: pointer;
+    background: var(--bg-hover); color: var(--text-muted);
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    user-select: none;
+  }
+  .label-mode-btn.active { background: var(--bg-active); color: var(--text-link); border-color: var(--accent-blue); }
+
+  /* ── Prune sub-form ──────────────────────────────────────── */
+  .prune-btns { display: flex; gap: 5px; margin-top: 6px; }
+  .prune-btn {
+    flex: 1; background: var(--bg-hover); border: 1px solid var(--border);
+    border-radius: 5px; color: var(--text-muted); font-size: 11.5px;
+    padding: 5px 4px; cursor: pointer; text-align: center;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+  .prune-btn:hover { background: var(--bg-active); color: var(--text); border-color: var(--accent-blue); }
+
+  /* ── Toast ───────────────────────────────────────────────── */
+  #toast {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%) translateY(-8px);
+    background: var(--bg-sidebar); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px 18px;
+    font-size: 12.5px; color: var(--text);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    opacity: 0; transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none; z-index: 1000; white-space: nowrap;
+  }
+  #toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.ok { border-color: var(--accent-green); color: #4ade80; }
+  #toast.warn { border-color: #fbbf24; color: #fbbf24; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Header ──────────────────────────────────────────────── -->
+  <header id="header">
+    <a id="header-logo" href="/">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="1" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.8"/>
+        <rect x="9" y="1" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.5"/>
+        <rect x="1" y="9" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.5"/>
+        <rect x="9" y="9" width="6" height="6" rx="1" fill="#58a6ff" opacity="0.3"/>
+      </svg>
+      tools
+    </a>
+    <span class="header-sep">/</span>
+    <span id="header-title">listops</span>
+    <div id="header-actions">
+      <button class="hdr-btn" id="btn-copy">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/></svg>
+        Copy
+      </button>
+      <button class="hdr-btn" id="btn-save-hdr">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/></svg>
+        Save
+      </button>
+      <a id="btn-hdr-gh" href="https://github.com/humor4fun/tools/tree/main/listops" target="_blank" rel="noopener">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        humor4fun/tools
+      </a>
+    </div>
+  </header>
+
+  <!-- ── Textarea ─────────────────────────────────────────────── -->
+  <div id="editor-pane">
+    <textarea id="editor" placeholder="Paste or type your list here…" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+  </div>
+
+  <!-- ── Sidebar ──────────────────────────────────────────────── -->
+  <aside id="sidebar">
+
+    <!-- Separators (always open) -->
+    <div id="sep-panel">
+      <div class="sep-row">
+        <div class="sep-label">Input separator</div>
+        <div class="sep-pills" id="in-pills">
+          <span class="sep-pill active" data-sep="newline">Newline</span>
+          <span class="sep-pill" data-sep="blank">Blank line</span>
+          <span class="sep-pill" data-sep="comma">Comma</span>
+          <span class="sep-pill" data-sep="space">Space</span>
+          <span class="sep-pill" data-sep="tab">Tab</span>
+          <span class="sep-pill" data-sep="custom">Custom…</span>
+        </div>
+        <input class="sep-custom-input" id="in-custom" placeholder="e.g.  |" maxlength="8">
+      </div>
+      <div class="sep-row">
+        <div class="sep-label">Output separator</div>
+        <div class="sep-pills" id="out-pills">
+          <span class="sep-pill active" data-sep="newline">Newline</span>
+          <span class="sep-pill" data-sep="blank">Blank line</span>
+          <span class="sep-pill" data-sep="comma">Comma</span>
+          <span class="sep-pill" data-sep="space">Space</span>
+          <span class="sep-pill" data-sep="tab">Tab</span>
+          <span class="sep-pill" data-sep="custom">Custom…</span>
+        </div>
+        <input class="sep-custom-input" id="out-custom" placeholder="e.g.  |" maxlength="8">
+      </div>
+    </div>
+
+    <!-- Sort -->
+    <div class="sb-section" id="sec-sort">
+      <div class="sb-section-header" data-sec="sort">
+        <span class="sb-section-title">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 3.5a.5.5 0 0 0-1 0v8.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 1.999.007.007a.497.497 0 0 0 .7-.006l2-2a.5.5 0 0 0-.707-.708L3.5 12.293zm4 .5a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1zm0 3a.5.5 0 0 1 0-1h3a.5.5 0 0 1 0 1zm0 3a.5.5 0 0 1 0-1h5a.5.5 0 0 1 0 1zM7 12.5a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 0-1h-7a.5.5 0 0 0-.5.5"/></svg>
+          Sort
+        </span>
+        <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="sb-section-body open" id="body-sort">
+        <button class="op-btn" data-op="sort-az">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 2.5a.5.5 0 0 0-1 0v8.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 2a.5.5 0 0 0 .708 0l2-2a.5.5 0 0 0-.708-.708L3.5 11.293zm4 1a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5M7.5 6a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zm0 3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1zm0 3a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1z"/></svg>
+          A → Z
+        </button>
+        <button class="op-btn" data-op="sort-za">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 2.5a.5.5 0 0 0-1 0v8.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 2a.5.5 0 0 0 .708 0l2-2a.5.5 0 0 0-.708-.708L3.5 11.293zm4 9a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5"/></svg>
+          Z → A
+        </button>
+        <button class="op-btn" data-op="sort-names">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/></svg>
+          A → Z (names, by last name)
+        </button>
+        <button class="op-btn" data-op="sort-titles">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5M3 2.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1H10v1h.5A1.5 1.5 0 0 1 12 5.5v5a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 4 10.5v-5A1.5 1.5 0 0 1 5.5 4H6V3H3.5a.5.5 0 0 1-.5-.5"/></svg>
+          A → Z (titles, ignore A/An/The…)
+        </button>
+        <button class="op-btn" data-op="sort-email">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1zm13 2.383-4.708 2.825L15 11.105zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741M1 11.105l4.708-2.897L1 5.383z"/></svg>
+          A → Z (email, by domain)
+        </button>
+        <button class="op-btn" data-op="sort-href">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1 1 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4 4 0 0 1-.128-1.287z"/><path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243z"/></svg>
+          A → Z (HREF, by link text)
+        </button>
+        <button class="op-btn" data-op="sort-ignore-first">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m2 3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0 3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2 3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>
+          A → Z (ignore 1st word)
+        </button>
+        <button class="op-btn" data-op="sort-addresses">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10m0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6"/></svg>
+          A → Z (addresses)
+          <span class="op-btn-note">blank-line sep</span>
+        </button>
+        <button class="op-btn" data-op="sort-numeric">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M2.873 11.297V4.142H1.699L0 5.379v1.137l1.64-1.18h.06v5.961zm3.213-5.09v-.063c0-.618.44-1.169 1.196-1.169.676 0 1.174.44 1.174 1.106 0 .624-.42 1.101-.807 1.526L4.99 10.553v.744h5.78v-.99H6.643v-.069L8.41 8.252c.65-.724 1.237-1.332 1.237-2.27C9.647 4.882 8.72 4 7.308 4c-1.573 0-2.43 1.01-2.43 2.208v.087z"/><path d="M10.086 12.41h.89v-1.177h.695v-.99h-.695v-3.75h-1.08l-2.29 3.793v.947h2.48zm-1.35-2.167v-.055l1.35-2.212h.05v2.267z"/></svg>
+          0 → 9 (numeric, K/M/G/m aware)
+        </button>
+        <button class="op-btn" data-op="sort-dow">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z"/></svg>
+          Day of week (Mon → Sun)
+        </button>
+        <button class="op-btn" data-op="sort-month">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4zm6 2a1 1 0 1 1 2 0 1 1 0 0 1-2 0m2 3a1 1 0 1 1 2 0 1 1 0 0 1-2 0m-2 3a1 1 0 1 1 2 0 1 1 0 0 1-2 0m-2-3a1 1 0 1 1 2 0 1 1 0 0 1-2 0"/></svg>
+          Month (Jan → Dec)
+        </button>
+        <button class="op-btn" data-op="sort-length">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5zm6.5.5A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5z"/></svg>
+          By length (short → long)
+        </button>
+        <button class="op-btn" data-op="sort-random">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M0 3.5A.5.5 0 0 1 .5 3H1c2.202 0 3.827 1.24 4.874 2.418.49.552.865 1.102 1.126 1.532.26-.43.636-.98 1.126-1.532C9.173 4.24 10.798 3 13 3v1c-1.798 0-3.173 1.01-4.126 2.082A9.6 9.6 0 0 0 7.556 8a9.6 9.6 0 0 0 1.317 1.918C9.828 10.99 11.204 12 13 12v1c-2.202 0-3.827-1.24-4.874-2.418A10.6 10.6 0 0 1 7 9.05c-.26.43-.636.98-1.126 1.532C4.827 11.76 3.202 13 1 13H.5a.5.5 0 0 1 0-1H1c1.798 0 3.173-1.01 4.126-2.082A9.6 9.6 0 0 0 6.444 8a9.6 9.6 0 0 0-1.317-1.918C4.172 5.01 2.796 4 1 4H.5a.5.5 0 0 1-.5-.5"/><path d="M13 5.466V1.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192m0 9v-3.932a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192"/></svg>
+          Random shuffle
+        </button>
+        <button class="op-btn" data-op="sort-reverse-list">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M12.5 15a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 1 0v13a.5.5 0 0 1-.5.5m-10-7a.5.5 0 0 1-.374-.832l4-4.5a.5.5 0 0 1 .748 0l4 4.5A.5.5 0 0 1 10.5 8z"/></svg>
+          Reverse list
+        </button>
+      </div>
+    </div>
+
+    <!-- Item Manipulation -->
+    <div class="sb-section" id="sec-items">
+      <div class="sb-section-header" data-sec="items">
+        <span class="sb-section-title">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 2a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zm-2 3a.5.5 0 0 0 0 1h9a.5.5 0 0 0 0-1zm0 3a.5.5 0 0 0 0 1h9a.5.5 0 0 0 0-1zm0 3a.5.5 0 0 0 0 1h9a.5.5 0 0 0 0-1z"/></svg>
+          Item Manipulation
+        </span>
+        <svg class="sb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="sb-section-body" id="body-items">
+        <button class="op-btn" data-op="mirror-items">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a1 1 0 0 1 1 1v14a1 1 0 0 1-2 0V1a1 1 0 0 1 1-1M1.854 6.146l-1.5 1.5a.5.5 0 0 0 0 .708l1.5 1.5a.5.5 0 1 0 .707-.707L1.707 8.5H5.5a.5.5 0 0 0 0-1H1.707l.855-.854a.5.5 0 1 0-.708-.707zm12.292 0a.5.5 0 0 0-.708.708l.855.853H10.5a.5.5 0 0 0 0 1h3.793l-.855.853a.5.5 0 0 0 .708.708l1.5-1.5a.5.5 0 0 0 0-.707z"/></svg>
+          Mirror items (reverse chars)
+        </button>
+        <button class="op-btn" data-op="reverse-words">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M11.5 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L11 2.707V14.5a.5.5 0 0 0 .5.5m-7-14a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L4 13.293V1.5a.5.5 0 0 1 .5-.5"/></svg>
+          Reverse words in each item
+        </button>
+        <button class="op-btn" data-op="transpose">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M0 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"/></svg>
+          Transpose (rows → columns)
+        </button>
+      </div>
+    </div>
+
+    <!-- Case -->
+    <div class="sb-section" id="sec-case">
+      <div class="sb-section-header" data-sec="case">
+        <span class="sb-section-title">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M2.244 13.081a.5.5 0 0 1-.622.311l-.189-.063a.5.5 0 0 1-.311-.622L5.89 2.5H8.25l4.562 10.5H10l-.9-2.188H4.901zm1.862-4.5h3.788l-1.89-4.577zM9 3a1 1 0 0 0-1 1v6a1 1 0 0 0 2 0V8h2v2a1 1 0 0 0 2 0V4a1 1 0 0 0-2 0v2h-2V4a1 1 0 0 0-1-1"/></svg>
+          Case
+        </span>
+        <svg class="sb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="sb-section-body" id="body-case">
+        <button class="op-btn" data-op="case-lower">lowercase</button>
+        <button class="op-btn" data-op="case-upper">UPPERCASE</button>
+        <button class="op-btn" data-op="case-title">Title Case</button>
+        <button class="op-btn" data-op="case-random">rAnDoM cAsE</button>
+        <button class="op-btn" data-op="case-capitalize">Capitalize first letter of each item</button>
+      </div>
+    </div>
+
+    <!-- Clean -->
+    <div class="sb-section" id="sec-clean">
+      <div class="sb-section-header" data-sec="clean">
+        <span class="sb-section-title">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 1.016A.5.5 0 0 1 3 .5h10a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.146.354L10 5.707V11.5a.5.5 0 0 1-.223.416l-3 2A.5.5 0 0 1 6 13.5V5.707L2.646 2.354A.5.5 0 0 1 2.5 2z"/></svg>
+          Clean
+        </span>
+        <svg class="sb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="sb-section-body" id="body-clean">
+        <button class="op-btn" data-op="remove-dupes">Remove duplicates (case-sensitive)</button>
+        <button class="op-btn" data-op="trim-spaces">Trim spaces from each item</button>
+        <button class="op-btn" data-op="remove-whitespace">Remove extra whitespace</button>
+        <button class="op-btn" data-op="remove-linebreaks">Remove all line breaks</button>
+        <button class="op-btn" data-op="remove-linebreaks-paras">Remove line breaks, keep paragraphs</button>
+        <button class="op-btn" data-op="remove-nonalpha">Remove non-alphanumeric chars</button>
+      </div>
+    </div>
+
+    <!-- Labels -->
+    <div class="sb-section" id="sec-labels">
+      <div class="sb-section-header" data-sec="labels">
+        <span class="sb-section-title">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M0 2a1 1 0 0 1 1-1h4.586a1 1 0 0 1 .707.293l7 7a1 1 0 0 1 0 1.414l-4.586 4.586a1 1 0 0 1-1.414 0l-7-7A1 1 0 0 1 0 6.586zm3 3.5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0"/></svg>
+          Labels
+        </span>
+        <svg class="sb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="sb-section-body" id="body-labels">
+        <div class="label-mode-row">
+          <span class="label-mode-btn active" id="lm-changing">Changing (#/A)</span>
+          <span class="label-mode-btn" id="lm-static">Static text</span>
+        </div>
+        <!-- Changing labels -->
+        <div id="label-changing-panel">
+          <div class="sub-form">
+            <div class="sub-form-row" style="margin-bottom:5px">
+              <label class="sub-form-check">
+                <input type="radio" name="label-type" value="number" checked> # (1,2,3…)
+              </label>
+              <label class="sub-form-check">
+                <input type="radio" name="label-type" value="letter"> A (A,B,C…)
+              </label>
+            </div>
+            <div class="sub-form-row" style="margin-bottom:5px">
+              <label class="sub-form-check" style="white-space:nowrap">Separator:</label>
+              <input type="text" id="label-sep" value=")" placeholder="e.g. ) : -" style="margin-bottom:0;flex:1">
+            </div>
+            <div class="sub-form-row">
+              <label class="sub-form-check">
+                <input type="radio" name="label-pos" value="prefix" checked> Prefix
+              </label>
+              <label class="sub-form-check">
+                <input type="radio" name="label-pos" value="suffix"> Suffix
+              </label>
+            </div>
+            <button class="sub-form-apply" id="btn-apply-changing-label">Apply to selection / all</button>
+          </div>
+        </div>
+        <!-- Static labels -->
+        <div id="label-static-panel" style="display:none">
+          <div class="sub-form">
+            <input type="text" id="label-static-text" placeholder="Your label text">
+            <div class="sub-form-row" style="margin-bottom:5px">
+              <label class="sub-form-check" style="white-space:nowrap">Separator:</label>
+              <input type="text" id="label-static-sep" value=":" placeholder="e.g. : - " style="margin-bottom:0;flex:1">
+            </div>
+            <div class="sub-form-row">
+              <label class="sub-form-check">
+                <input type="radio" name="static-pos" value="prefix" checked> Prefix
+              </label>
+              <label class="sub-form-check">
+                <input type="radio" name="static-pos" value="suffix"> Suffix
+              </label>
+            </div>
+            <button class="sub-form-apply" id="btn-apply-static-label">Apply to selection / all</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prune -->
+    <div class="sb-section" id="sec-prune">
+      <div class="sb-section-header" data-sec="prune">
+        <span class="sb-section-title">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 2.5a.5.5 0 0 0-1 0v8.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 2a.5.5 0 0 0 .708 0l2-2a.5.5 0 0 0-.708-.708L3.5 11.293zm6 0a.5.5 0 0 0-1 0V10H7.5a.5.5 0 0 0 0 1H9v.5a.5.5 0 0 0 1 0V3a2.5 2.5 0 0 1 5 0v8.5a.5.5 0 0 0 1 0V3a3.5 3.5 0 1 0-7 0z"/></svg>
+          Prune
+        </span>
+        <svg class="sb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="sb-section-body" id="body-prune">
+        <div class="sub-form">
+          <input type="text" id="prune-trigger" placeholder="Trigger text (will be deleted)">
+          <div class="prune-btns">
+            <button class="prune-btn" id="btn-prune-start">Prune from start</button>
+            <button class="prune-btn" id="btn-prune-end">Prune from end</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Replace -->
+    <div class="sb-section" id="sec-replace">
+      <div class="sb-section-header" data-sec="replace">
+        <span class="sb-section-title">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/></svg>
+          Replace
+        </span>
+        <svg class="sb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="sb-section-body" id="body-replace">
+        <div class="sub-form">
+          <input type="text" id="replace-find" placeholder="Find…">
+          <input type="text" id="replace-with" placeholder="Replace with…">
+          <div class="sub-form-row">
+            <label class="sub-form-check">
+              <input type="checkbox" id="replace-whole-word"> Whole word only
+            </label>
+          </div>
+          <button class="sub-form-apply" id="btn-replace">Replace all</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- File -->
+    <div class="sb-section" id="sec-file">
+      <div class="sb-section-header" data-sec="file">
+        <span class="sb-section-title">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z"/></svg>
+          File
+        </span>
+        <svg class="sb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="sb-section-body" id="body-file">
+        <button class="op-btn" id="btn-load-file">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z"/></svg>
+          Load text file…
+        </button>
+        <input type="file" id="file-input" accept=".txt,text/plain" style="display:none">
+        <button class="op-btn" id="btn-save-file">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/></svg>
+          Save to file…
+        </button>
+        <button class="op-btn" id="btn-print">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1"/><path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1"/></svg>
+          Print
+        </button>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── Status bar ────────────────────────────────────────────── -->
+  <div id="statusbar">
+    <span id="stats">0 items · 0 words · 0 chars</span>
+    <span class="sb-sep">·</span>
+    <button class="sb-btn" id="btn-undo" disabled>
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/></svg>
+      Undo
+    </button>
+    <button class="sb-btn" id="btn-redo" disabled>
+      Redo
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966a.25.25 0 0 1 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
+    </button>
+    <span class="sb-sep">·</span>
+    <span id="stack-label">Stack:</span>
+    <input type="number" id="stack-input" value="15" min="0" max="100" title="Undo/redo stack size (0–100)">
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+// ── State ──────────────────────────────────────────────────────
+const el = id => document.getElementById(id);
+const editor    = el('editor');
+const statsEl   = el('stats');
+const btnUndo   = el('btn-undo');
+const btnRedo   = el('btn-redo');
+const stackInp  = el('stack-input');
+const toastEl   = el('toast');
+
+let undoStack = [];
+let redoStack = [];
+let stackMax  = 15;
+
+// Separator state
+let inSep  = 'newline';
+let outSep = 'newline';
+let inCustom  = '';
+let outCustom = '';
+
+// ── Persistence ────────────────────────────────────────────────
+function loadPrefs() {
+  try {
+    const s = JSON.parse(localStorage.getItem('listops_prefs') || '{}');
+    if (s.stackMax !== undefined) { stackMax = s.stackMax; stackInp.value = stackMax; }
+    if (s.inSep)  { inSep  = s.inSep;  setActivePill('in',  inSep);  }
+    if (s.outSep) { outSep = s.outSep; setActivePill('out', outSep); }
+    if (s.inCustom)  { inCustom  = s.inCustom;  el('in-custom').value  = inCustom;  }
+    if (s.outCustom) { outCustom = s.outCustom; el('out-custom').value = outCustom; }
+    if (s.inSep  === 'custom') el('in-custom').classList.add('visible');
+    if (s.outSep === 'custom') el('out-custom').classList.add('visible');
+    // section collapse state
+    ['sort','items','case','clean','labels','prune','replace','file'].forEach(sec => {
+      if (s['sec_' + sec] === false) {
+        el('body-' + sec).classList.remove('open');
+        el('sec-' + sec).querySelector('.sb-chevron').classList.remove('open');
+      }
+    });
+  } catch(e) {}
+}
+function savePrefs() {
+  try {
+    const s = { stackMax, inSep, outSep, inCustom, outCustom };
+    ['sort','items','case','clean','labels','prune','replace','file'].forEach(sec => {
+      s['sec_' + sec] = el('body-' + sec).classList.contains('open');
+    });
+    localStorage.setItem('listops_prefs', JSON.stringify(s));
+  } catch(e) {}
+}
+
+// ── Toast ──────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type = '') {
+  clearTimeout(toastTimer);
+  toastEl.textContent = msg;
+  toastEl.className = 'visible' + (type ? ' ' + type : '');
+  toastTimer = setTimeout(() => { toastEl.className = ''; }, 2200);
+}
+
+// ── Stats ──────────────────────────────────────────────────────
+function updateStats() {
+  const val = editor.value;
+  const chars = val.length;
+  const words = val.trim() === '' ? 0 : val.trim().split(/\s+/).length;
+  const items = val.trim() === '' ? 0 : splitItems(val).filter(s => s.trim() !== '').length;
+  statsEl.textContent = `${items} items · ${words} words · ${chars} chars`;
+}
+
+// ── Undo / Redo ────────────────────────────────────────────────
+function pushUndo(prevVal) {
+  if (stackMax === 0) return;
+  undoStack.push(prevVal);
+  if (undoStack.length > stackMax) undoStack.shift();
+  redoStack = [];
+  updateUndoButtons();
+}
+function updateUndoButtons() {
+  btnUndo.disabled = undoStack.length === 0;
+  btnRedo.disabled = redoStack.length === 0;
+}
+btnUndo.addEventListener('click', () => {
+  if (!undoStack.length) return;
+  redoStack.push(editor.value);
+  editor.value = undoStack.pop();
+  updateStats(); updateUndoButtons();
+});
+btnRedo.addEventListener('click', () => {
+  if (!redoStack.length) return;
+  undoStack.push(editor.value);
+  editor.value = redoStack.pop();
+  updateStats(); updateUndoButtons();
+});
+stackInp.addEventListener('change', () => {
+  let v = parseInt(stackInp.value, 10);
+  if (isNaN(v) || v < 0) v = 0;
+  if (v > 100) v = 100;
+  stackInp.value = v;
+  stackMax = v;
+  // Trim stacks if needed
+  while (undoStack.length > stackMax) undoStack.shift();
+  while (redoStack.length > stackMax) redoStack.shift();
+  updateUndoButtons();
+  savePrefs();
+});
+
+// ── Separators ─────────────────────────────────────────────────
+const SEP_CHARS = {
+  newline: '\n',
+  blank:   '\n\n',
+  comma:   ',',
+  space:   ' ',
+  tab:     '\t',
+};
+function getSepChar(type, custom) {
+  if (type === 'custom') return custom;
+  return SEP_CHARS[type] || '\n';
+}
+function setActivePill(which, val) {
+  const container = el(which + '-pills');
+  container.querySelectorAll('.sep-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.sep === val);
+  });
+}
+
+function applyOutSep() {
+  // Reformat the textarea content using current in→out separator
+  const inChar  = getSepChar(inSep, inCustom);
+  const outChar = getSepChar(outSep, outCustom);
+  if (inChar === outChar) return;
+  const prev = editor.value;
+  const items = splitByChar(prev, inChar);
+  editor.value = items.join(outChar);
+  // Sync in sep to out
+  inSep = outSep; inCustom = outCustom;
+  setActivePill('in', inSep);
+  el('in-custom').classList.toggle('visible', inSep === 'custom');
+  el('in-custom').value = inCustom;
+  updateStats();
+}
+
+document.querySelectorAll('#in-pills .sep-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    inSep = pill.dataset.sep;
+    setActivePill('in', inSep);
+    el('in-custom').classList.toggle('visible', inSep === 'custom');
+    // Sync out to in (SortMyList behaviour)
+    outSep = inSep;
+    setActivePill('out', outSep);
+    el('out-custom').classList.toggle('visible', outSep === 'custom');
+    savePrefs();
+  });
+});
+document.querySelectorAll('#out-pills .sep-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    const newOutSep = pill.dataset.sep;
+    const newOutCustom = outCustom;
+    // Reformat immediately
+    const inChar  = getSepChar(inSep, inCustom);
+    const outChar = getSepChar(newOutSep, newOutCustom);
+    if (inChar !== outChar) {
+      const prev = editor.value;
+      pushUndo(prev);
+      const items = splitByChar(prev, inChar);
+      editor.value = items.join(outChar);
+    }
+    outSep = newOutSep;
+    setActivePill('out', outSep);
+    el('out-custom').classList.toggle('visible', outSep === 'custom');
+    // Sync in to out
+    inSep = outSep;
+    setActivePill('in', inSep);
+    el('in-custom').classList.toggle('visible', inSep === 'custom');
+    updateStats(); savePrefs();
+  });
+});
+el('in-custom').addEventListener('input', e => { inCustom = e.target.value; savePrefs(); });
+el('out-custom').addEventListener('input', e => { outCustom = e.target.value; savePrefs(); });
+
+// ── Split / Join helpers ────────────────────────────────────────
+function splitByChar(text, sepChar) {
+  if (sepChar === '\n\n') {
+    return text.split(/\n\s*\n/).map(s => s.trim()).filter(s => s !== '');
+  }
+  return text.split(sepChar);
+}
+
+function splitItems(text) {
+  const inChar = getSepChar(inSep, inCustom);
+  return splitByChar(text, inChar);
+}
+function joinItems(items) {
+  const outChar = getSepChar(outSep, outCustom);
+  return items.join(outChar);
+}
+
+function applyTransform(fn) {
+  const prev = editor.value;
+  pushUndo(prev);
+  editor.value = fn(prev);
+  updateStats(); updateUndoButtons();
+}
+
+function applyItemTransform(fn) {
+  const prev = editor.value;
+  pushUndo(prev);
+  const items = splitItems(prev);
+  editor.value = joinItems(fn(items));
+  updateStats(); updateUndoButtons();
+}
+
+// ── Sort helpers ───────────────────────────────────────────────
+function collate(a, b) {
+  return a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
+}
+
+const TITLE_IGNORE = /^(a|an|the|la|le|l'|il)\s+/i;
+const NAME_PREFIXES = /^(the\s+|mr\.?\s+|mrs\.?\s+|ms\.?\s+|dr\.?\s+|prof\.?\s+|rev\.?\s+|reverend\s+|honorable\s+|the\s+honorable\s+|sir\s+)/i;
+const NAME_AND      = /\s+(and\s+.+|&.+)$/i;
+
+function getLastName(item) {
+  let s = item.trim().replace(NAME_PREFIXES, '').replace(NAME_AND, '');
+  const parts = s.split(/[\s,]+/).filter(Boolean);
+  return parts.length >= 2 ? parts[parts.length - 1] : parts[0] || s;
+}
+
+const DAYS = ['mon','tue','wed','thu','fri','sat','sun'];
+const DAY_PATTERNS = [
+  /\b(monday|mon)\b/i,
+  /\b(tuesday|tue|tues)\b/i,
+  /\b(wednesday|wed)\b/i,
+  /\b(thursday|thu|thur|thurs)\b/i,
+  /\b(friday|fri)\b/i,
+  /\b(saturday|sat)\b/i,
+  /\b(sunday|sun)\b/i,
+];
+function getDayIndex(item) {
+  for (let i = 0; i < DAY_PATTERNS.length; i++) {
+    if (DAY_PATTERNS[i].test(item)) return i;
+  }
+  return 999;
+}
+
+const MONTH_PATTERNS = [
+  /\b(jan(?:uary)?)\b/i,
+  /\b(feb(?:ruary)?)\b/i,
+  /\b(mar(?:ch)?)\b/i,
+  /\b(apr(?:il)?)\b/i,
+  /\b(may)\b/i,
+  /\b(jun(?:e)?)\b/i,
+  /\b(jul(?:y)?)\b/i,
+  /\b(aug(?:ust)?)\b/i,
+  /\b(sep(?:t(?:ember)?)?)\b/i,
+  /\b(oct(?:ober)?)\b/i,
+  /\b(nov(?:ember)?)\b/i,
+  /\b(dec(?:ember)?)\b/i,
+];
+function getMonthIndex(item) {
+  for (let i = 0; i < MONTH_PATTERNS.length; i++) {
+    if (MONTH_PATTERNS[i].test(item)) return i;
+  }
+  return 999;
+}
+function getDayNum(item) {
+  const m = item.match(/\b(\d{1,2})\b/);
+  return m ? parseInt(m[1], 10) : 999;
+}
+
+// Numeric sort: find first number-like token, handle K/M/G/m suffixes
+function getNumericVal(item) {
+  const m = item.match(/([+-]?\d+\.?\d*)\s*([KkMmGg]?)/);
+  if (!m) return Infinity;
+  let v = parseFloat(m[1]);
+  switch (m[2]) {
+    case 'k': case 'K': v *= 1e3; break;
+    case 'M': v *= 1e6; break;
+    case 'G': v *= 1e9; break;
+    case 'm': v *= 1e-3; break;
+  }
+  return v;
+}
+
+// HREF: text after first >
+function getHrefText(item) {
+  const m = item.match(/>([^<]*)</);
+  return m ? m[1].trim().toLowerCase() : item.toLowerCase();
+}
+
+// Email: domain (right of @)
+function getEmailDomain(item) {
+  const m = item.match(/@([\w.-]+)/);
+  return m ? m[1].toLowerCase() : item.toLowerCase();
+}
+
+// Transpose: auto-detect delimiter among tab, comma, semicolon, hyphen, multi-space
+function detectTransposeDelim(lines) {
+  if (lines.some(l => l.includes('\t'))) return /\t/;
+  if (lines.some(l => l.includes(';')))  return /;/;
+  if (lines.some(l => l.includes(',')))  return /,/;
+  if (lines.some(l => / {2,}/.test(l)))  return /\s{2,}/;
+  return /\s+/;
+}
+
+// Addr sort: parse address blocks (blank-line separated), sort by last name of first line
+function sortAddresses(text) {
+  const blocks = text.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+  blocks.sort((a, b) => {
+    const lastA = getLastName(a.split('\n')[0]);
+    const lastB = getLastName(b.split('\n')[0]);
+    return collate(lastA, lastB);
+  });
+  return blocks.join('\n\n');
+}
+
+// Changing label counter (supports numbers and letters, wraps to AA, AB…)
+function makeLabelCounter(type) {
+  let n = 0;
+  return () => {
+    n++;
+    if (type === 'number') return String(n);
+    // Letter: 1=A, 26=Z, 27=AA …
+    let r = '', x = n;
+    while (x > 0) {
+      x--;
+      r = String.fromCharCode(65 + (x % 26)) + r;
+      x = Math.floor(x / 26);
+    }
+    return r;
+  };
+}
+
+// Fisher-Yates shuffle
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ── Collapsible sections ───────────────────────────────────────
+document.querySelectorAll('.sb-section-header').forEach(hdr => {
+  hdr.addEventListener('click', () => {
+    const sec = hdr.dataset.sec;
+    const body = el('body-' + sec);
+    const chevron = hdr.querySelector('.sb-chevron');
+    body.classList.toggle('open');
+    chevron.classList.toggle('open', body.classList.contains('open'));
+    savePrefs();
+  });
+});
+
+// ── Label mode toggle ──────────────────────────────────────────
+el('lm-changing').addEventListener('click', () => {
+  el('lm-changing').classList.add('active');
+  el('lm-static').classList.remove('active');
+  el('label-changing-panel').style.display = '';
+  el('label-static-panel').style.display   = 'none';
+});
+el('lm-static').addEventListener('click', () => {
+  el('lm-static').classList.add('active');
+  el('lm-changing').classList.remove('active');
+  el('label-static-panel').style.display   = '';
+  el('label-changing-panel').style.display = 'none';
+});
+
+// ── Get selection or all lines ─────────────────────────────────
+function getSelectionLines() {
+  const { selectionStart: ss, selectionEnd: se, value } = editor;
+  if (ss === se) return null; // no selection
+  // Expand to full lines
+  const start = value.lastIndexOf('\n', ss - 1) + 1;
+  const end   = value.indexOf('\n', se);
+  const lineEnd = end === -1 ? value.length : end;
+  return { start, end: lineEnd, text: value.slice(start, lineEnd) };
+}
+
+function applyLabelTransform(fn) {
+  const sel = getSelectionLines();
+  const prev = editor.value;
+  pushUndo(prev);
+  if (sel) {
+    const lines = sel.text.split('\n');
+    const transformed = fn(lines).join('\n');
+    editor.value = prev.slice(0, sel.start) + transformed + prev.slice(sel.end);
+    // Restore selection
+    editor.setSelectionRange(sel.start, sel.start + transformed.length);
+  } else {
+    const lines = editor.value.split('\n');
+    editor.value = fn(lines).join('\n');
+  }
+  updateStats(); updateUndoButtons();
+}
+
+// ── Label apply handlers ───────────────────────────────────────
+el('btn-apply-changing-label').addEventListener('click', () => {
+  const type    = document.querySelector('input[name="label-type"]:checked').value;
+  const sepChar = el('label-sep').value;
+  const pos     = document.querySelector('input[name="label-pos"]:checked').value;
+  let n = 0;
+  function nextLabel() {
+    n++;
+    if (type === 'number') return String(n);
+    let r = '', x = n;
+    while (x > 0) { x--; r = String.fromCharCode(65 + (x % 26)) + r; x = Math.floor(x / 26); }
+    return r;
+  }
+  applyLabelTransform(lines => lines.map(line => {
+    const lbl = nextLabel();
+    return pos === 'prefix' ? lbl + sepChar + line : line + sepChar + lbl;
+  }));
+  toast('Labels applied', 'ok');
+});
+
+el('btn-apply-static-label').addEventListener('click', () => {
+  const labelText = el('label-static-text').value;
+  const sepChar   = el('label-static-sep').value;
+  const pos = document.querySelector('input[name="static-pos"]:checked').value;
+  if (!labelText) { toast('Enter label text first', 'warn'); return; }
+  applyLabelTransform(lines => lines.map(line =>
+    pos === 'prefix' ? labelText + sepChar + line : line + sepChar + labelText
+  ));
+  toast('Labels applied', 'ok');
+});
+
+// ── Prune ──────────────────────────────────────────────────────
+el('btn-prune-start').addEventListener('click', () => {
+  const trigger = el('prune-trigger').value;
+  if (!trigger) { toast('Enter trigger text first', 'warn'); return; }
+  applyItemTransform(items => items.map(item => {
+    const idx = item.indexOf(trigger);
+    return idx === -1 ? item : item.slice(idx + trigger.length);
+  }));
+  toast('Pruned from start', 'ok');
+});
+el('btn-prune-end').addEventListener('click', () => {
+  const trigger = el('prune-trigger').value;
+  if (!trigger) { toast('Enter trigger text first', 'warn'); return; }
+  applyItemTransform(items => items.map(item => {
+    const idx = item.indexOf(trigger);
+    return idx === -1 ? item : item.slice(0, idx);
+  }));
+  toast('Pruned from end', 'ok');
+});
+
+// ── Replace ────────────────────────────────────────────────────
+el('btn-replace').addEventListener('click', () => {
+  const find = el('replace-find').value;
+  const repl = el('replace-with').value;
+  if (!find) { toast('Enter search text first', 'warn'); return; }
+  const whole = el('replace-whole-word').checked;
+  applyTransform(text => {
+    if (whole) {
+      const re = new RegExp('(?<![\\w])' + find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\w])', 'g');
+      return text.replace(re, repl);
+    }
+    return text.split(find).join(repl);
+  });
+  toast('Replaced', 'ok');
+});
+
+// ── File ops ───────────────────────────────────────────────────
+el('btn-load-file').addEventListener('click', () => el('file-input').click());
+el('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    pushUndo(editor.value);
+    editor.value = ev.target.result;
+    updateStats(); updateUndoButtons();
+    toast('Loaded: ' + file.name, 'ok');
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+function saveFile() {
+  const blob = new Blob([editor.value], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'list.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Saved', 'ok');
+}
+el('btn-save-file').addEventListener('click', saveFile);
+el('btn-save-hdr').addEventListener('click', saveFile);
+el('btn-print').addEventListener('click', () => window.print());
+
+// ── Copy ───────────────────────────────────────────────────────
+el('btn-copy').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(editor.value);
+    toast('Copied!', 'ok');
+  } catch {
+    editor.select();
+    document.execCommand('copy');
+    toast('Copied!', 'ok');
+  }
+});
+
+// ── All operation buttons ──────────────────────────────────────
+document.querySelectorAll('.op-btn[data-op]').forEach(btn => {
+  btn.addEventListener('click', () => runOp(btn.dataset.op));
+});
+
+function runOp(op) {
+  switch (op) {
+
+    case 'sort-az':
+      applyItemTransform(items => [...items].sort(collate));
+      break;
+    case 'sort-za':
+      applyItemTransform(items => [...items].sort((a,b) => collate(b,a)));
+      break;
+    case 'sort-names':
+      applyItemTransform(items => [...items].sort((a,b) =>
+        collate(getLastName(a), getLastName(b))
+      ));
+      break;
+    case 'sort-titles':
+      applyItemTransform(items => [...items].sort((a,b) => {
+        const clean = s => s.trim().replace(TITLE_IGNORE, '').toLowerCase();
+        return collate(clean(a), clean(b));
+      }));
+      break;
+    case 'sort-email':
+      applyItemTransform(items => [...items].sort((a,b) =>
+        collate(getEmailDomain(a), getEmailDomain(b))
+      ));
+      break;
+    case 'sort-href':
+      applyItemTransform(items => [...items].sort((a,b) =>
+        collate(getHrefText(a), getHrefText(b))
+      ));
+      break;
+    case 'sort-ignore-first':
+      applyItemTransform(items => [...items].sort((a,b) => {
+        const rest = s => s.trim().split(/\s+/).slice(1).join(' ').toLowerCase();
+        return collate(rest(a), rest(b));
+      }));
+      break;
+    case 'sort-addresses':
+      applyTransform(text => sortAddresses(text));
+      break;
+    case 'sort-numeric':
+      applyItemTransform(items => [...items].sort((a,b) =>
+        getNumericVal(a) - getNumericVal(b)
+      ));
+      break;
+    case 'sort-dow':
+      applyItemTransform(items => [...items].sort((a,b) =>
+        getDayIndex(a) - getDayIndex(b)
+      ));
+      break;
+    case 'sort-month':
+      applyItemTransform(items => [...items].sort((a,b) => {
+        const mi = getMonthIndex(a) - getMonthIndex(b);
+        return mi !== 0 ? mi : getDayNum(a) - getDayNum(b);
+      }));
+      break;
+    case 'sort-length':
+      applyItemTransform(items => [...items].sort((a,b) => a.length - b.length));
+      break;
+    case 'sort-random':
+      applyItemTransform(items => shuffle([...items]));
+      break;
+    case 'sort-reverse-list':
+      applyItemTransform(items => [...items].reverse());
+      break;
+
+    case 'mirror-items':
+      applyItemTransform(items => items.map(s => s.split('').reverse().join('')));
+      break;
+    case 'reverse-words':
+      applyItemTransform(items => items.map(s => s.split(/(\s+)/).reverse().join('')));
+      break;
+    case 'transpose': {
+      const lines = editor.value.split('\n').filter(l => l.trim() !== '');
+      const delim = detectTransposeDelim(lines);
+      const rows  = lines.map(l => l.split(delim));
+      const cols  = Math.max(...rows.map(r => r.length));
+      const result = [];
+      for (let c = 0; c < cols; c++) {
+        result.push(rows.map(r => (r[c] || '').trimEnd()).join('\t'));
+      }
+      pushUndo(editor.value);
+      editor.value = result.join('\n');
+      updateStats(); updateUndoButtons();
+      break;
+    }
+
+    case 'case-lower':
+      applyTransform(t => t.toLowerCase());
+      break;
+    case 'case-upper':
+      applyTransform(t => t.toUpperCase());
+      break;
+    case 'case-title': {
+      const skip = new Set(['a','an','the','and','but','for','nor','or','of','with','to','in','on','de','le','la','au']);
+      applyTransform(t => t.replace(/\b\w+/g, (w, offset) => {
+        if (offset > 0 && skip.has(w.toLowerCase())) return w.toLowerCase();
+        return w[0].toUpperCase() + w.slice(1).toLowerCase();
+      }));
+      break;
+    }
+    case 'case-random':
+      applyTransform(t => t.split('').map(c =>
+        Math.random() < 0.5 ? c.toUpperCase() : c.toLowerCase()
+      ).join(''));
+      break;
+    case 'case-capitalize':
+      applyItemTransform(items => items.map(s =>
+        s.length === 0 ? s : s[0].toUpperCase() + s.slice(1)
+      ));
+      break;
+
+    case 'remove-dupes': {
+      const seen = new Set();
+      applyItemTransform(items => items.filter(item => {
+        if (seen.has(item)) return false;
+        seen.add(item); return true;
+      }));
+      break;
+    }
+    case 'trim-spaces':
+      applyItemTransform(items => items.map(s => s.trim()));
+      break;
+    case 'remove-whitespace':
+      applyTransform(t => t.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim());
+      break;
+    case 'remove-linebreaks':
+      applyTransform(t => t.replace(/\n+/g, ' ').trim());
+      break;
+    case 'remove-linebreaks-paras':
+      applyTransform(t => {
+        // Split on double newlines (paragraph boundaries), then join single newlines within paras
+        return t.split(/\n\s*\n/).map(para =>
+          para.replace(/\n/g, ' ').trim()
+        ).join('\n\n');
+      });
+      break;
+    case 'remove-nonalpha': {
+      // Act on items, not separators
+      applyItemTransform(items => items.map(s =>
+        s.replace(/[^A-Za-z0-9 ]/g, '')
+      ));
+      break;
+    }
+
+    default:
+      toast('Unknown operation: ' + op, 'warn');
+  }
+}
+
+// ── Live stats ─────────────────────────────────────────────────
+editor.addEventListener('input', updateStats);
+
+// ── Tab key → 2 spaces ────────────────────────────────────────
+editor.addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const ss = editor.selectionStart;
+    const se = editor.selectionEnd;
+    editor.value = editor.value.slice(0, ss) + '  ' + editor.value.slice(se);
+    editor.selectionStart = editor.selectionEnd = ss + 2;
+  }
+});
+
+// ── Init ───────────────────────────────────────────────────────
+loadPrefs();
+updateStats();
+updateUndoButtons();
+</script>
+</body>
+</html>
