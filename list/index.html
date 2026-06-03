@@ -245,6 +245,7 @@
 <script src="../utils/toast.js"></script>
 <script src="../utils/clipboard.js"></script>
 <script src="../utils/sidebar.js"></script>
+<script src="../utils/tabs.js"></script>
 <script src="../utils/header.js"></script>
 </head>
 <body>
@@ -628,24 +629,67 @@ let outSep = 'newline';
 let inCustom  = '';
 let outCustom = '';
 
-// ── Persistence ────────────────────────────────────────────────
-function loadPrefs() {
-  try {
-    const s = JSON.parse(localStorage.getItem('list_prefs') || '{}');
-    if (s.stackMax !== undefined) { stackMax = s.stackMax; stackInp.value = stackMax; }
-    if (s.inSep)  { inSep  = s.inSep;  setActivePill('in',  inSep);  }
-    if (s.outSep) { outSep = s.outSep; setActivePill('out', outSep); }
-    if (s.inCustom)  { inCustom  = s.inCustom;  el('in-custom').value  = inCustom;  }
-    if (s.outCustom) { outCustom = s.outCustom; el('out-custom').value = outCustom; }
-    if (s.inSep  === 'custom') el('in-custom').classList.add('visible');
-    if (s.outSep === 'custom') el('out-custom').classList.add('visible');
-  } catch(e) {}
+// ── Tabs ───────────────────────────────────────────────────────
+let listCtrl = null;
+
+function makeDefaultTab() {
+  return {
+    content:      '',
+    inSep:        'newline',
+    outSep:       'newline',
+    inCustom:     '',
+    outCustom:    '',
+    stackMax:     15,
+    undoStack:    [],
+    redoStack:    [],
+    currentLabel: 'Initial',
+  };
 }
-function savePrefs() {
-  try {
-    const s = { stackMax, inSep, outSep, inCustom, outCustom };
-    localStorage.setItem('list_prefs', JSON.stringify(s));
-  } catch(e) {}
+
+function tabLabel(tab) {
+  const c = (tab.content || '').trim();
+  if (!c) return 'New List';
+  const first = c.split('\n')[0].trim();
+  return first.length <= 22 ? first : first.slice(0, 21) + '\u2026';
+}
+
+function getTabState() {
+  return {
+    content:      editor.value,
+    inSep,
+    outSep,
+    inCustom,
+    outCustom,
+    stackMax,
+    undoStack:    undoStack.slice(),
+    redoStack:    redoStack.slice(),
+    currentLabel,
+  };
+}
+
+function applyTabState(tab) {
+  // Content
+  editor.value = tab.content || '';
+  // Separators
+  inSep     = tab.inSep     || 'newline';
+  outSep    = tab.outSep    || 'newline';
+  inCustom  = tab.inCustom  || '';
+  outCustom = tab.outCustom || '';
+  setActivePill('in',  inSep);
+  setActivePill('out', outSep);
+  el('in-custom').value  = inCustom;
+  el('out-custom').value = outCustom;
+  el('in-custom').classList.toggle('visible',  inSep  === 'custom');
+  el('out-custom').classList.toggle('visible', outSep === 'custom');
+  // Undo stack
+  stackMax     = tab.stackMax     !== undefined ? tab.stackMax : 15;
+  undoStack    = (tab.undoStack   || []).slice();
+  redoStack    = (tab.redoStack   || []).slice();
+  currentLabel = tab.currentLabel || 'Initial';
+  stackInp.value = stackMax;
+  updateStats();
+  updateUndoButtons();
+  updateHistory();
 }
 
 // ── Stats ──────────────────────────────────────────────────────
@@ -712,7 +756,7 @@ stackInp.addEventListener('change', () => {
   // If limit changed, reset the per-limit dismissal so banner can reappear when reached
   if (v !== prevMax) clearStackWarnDismissal();
   updateUndoButtons(); updateHistory();
-  savePrefs();
+  if (listCtrl) { Object.assign(listCtrl.current(), getTabState()); listCtrl.persist(); }
 });
 
 // ── History list rendering ─────────────────────────────────────
@@ -882,7 +926,7 @@ document.querySelectorAll('#in-pills .sep-pill').forEach(pill => {
     outSep = inSep;
     setActivePill('out', outSep);
     el('out-custom').classList.toggle('visible', outSep === 'custom');
-    savePrefs();
+    if (listCtrl) { Object.assign(listCtrl.current(), getTabState()); listCtrl.persist(); }
   });
 });
 document.querySelectorAll('#out-pills .sep-pill').forEach(pill => {
@@ -905,11 +949,11 @@ document.querySelectorAll('#out-pills .sep-pill').forEach(pill => {
     inSep = outSep;
     setActivePill('in', inSep);
     el('in-custom').classList.toggle('visible', inSep === 'custom');
-    updateStats(); savePrefs();
+    updateStats(); if (listCtrl) { Object.assign(listCtrl.current(), getTabState()); listCtrl.persist(); }
   });
 });
-el('in-custom').addEventListener('input', e => { inCustom = e.target.value; savePrefs(); });
-el('out-custom').addEventListener('input', e => { outCustom = e.target.value; savePrefs(); });
+el('in-custom').addEventListener('input', e => { inCustom = e.target.value; if (listCtrl) { Object.assign(listCtrl.current(), getTabState()); listCtrl.persist(); } });
+el('out-custom').addEventListener('input', e => { outCustom = e.target.value; if (listCtrl) { Object.assign(listCtrl.current(), getTabState()); listCtrl.persist(); } });
 
 // ── Split / Join helpers ────────────────────────────────────────
 function splitByChar(text, sepChar) {
@@ -1367,7 +1411,7 @@ function runOp(op) {
 }
 
 // ── Live stats ─────────────────────────────────────────────────
-editor.addEventListener('input', updateStats);
+editor.addEventListener('input', () => { updateStats(); if (listCtrl) { Object.assign(listCtrl.current(), getTabState()); listCtrl.persist(); listCtrl.renderBar(); } });
 
 // ── Tab key → 2 spaces ────────────────────────────────────────
 editor.addEventListener('keydown', e => {
@@ -1387,10 +1431,13 @@ renderHeader({
   githubPath: 'list',
 });
 initSidebarSections('list_prefs', ['sec-sort','sec-items','sec-case','sec-clean','sec-labels','sec-prune','sec-replace','sec-file','sec-history']);
-loadPrefs();
-updateStats();
-updateUndoButtons();
-updateHistory();
+listCtrl = initTabs({
+  storageKey: 'list_tabs',
+  defaultTab: makeDefaultTab,
+  tabLabel:   tabLabel,
+  onSwitch:   applyTabState,
+  onSave:     getTabState,
+}).init();
 </script>
 </body>
 </html>

@@ -100,6 +100,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 .check-lbl{font-size:12px}
 </style>
 <script src="../utils/sidebar.js"></script>
+<script src="../utils/tabs.js"></script>
 <script src="../utils/header.js"></script>
 </head>
 <body>
@@ -1009,6 +1010,118 @@ document.getElementById('btn-copy').addEventListener('click',()=>{
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════════════════════════
+
+let barcodeCtrl = null;
+
+function makeDefaultTab() {
+  return {
+    content:    'Hello World 123',
+    type:       'code128',
+    fg:         '#000000',
+    bg:         '#ffffff',
+    transparent: false,
+    barWidth:   2,
+    barHeight:  100,
+    quietZone:  10,
+    rounded:    false,
+    cornerR:    16,
+    showText:   true,
+    textPos:    'below',
+    fontFamily: 'monospace',
+    fontSize:   14,
+    textGap:    6,
+    customTc:   false,
+    textColor:  '#000000',
+    outWidth:   600,
+  };
+}
+
+function tabLabel(tab) {
+  const c = (tab.content || '').trim();
+  if (!c) return 'Untitled';
+  return c.length <= 20 ? c : c.slice(0, 19) + '\u2026';
+}
+
+function getTabState() {
+  return {
+    content:    contentInp.value,
+    type:       curType,
+    fg:         fgColor.value,
+    bg:         bgColor.value,
+    transparent: bgTransp.checked,
+    barWidth:   parseFloat(barWidthEl.value),
+    barHeight:  parseInt(barHeightEl.value),
+    quietZone:  parseInt(quietZoneEl.value),
+    rounded:    roundedEl.checked,
+    cornerR:    parseInt(cornerREl.value),
+    showText:   showTextEl.checked,
+    textPos:    curTextPos,
+    fontFamily: curFont,
+    fontSize:   parseInt(fontSizeEl.value),
+    textGap:    parseInt(textGapEl.value),
+    customTc:   customTcEl.checked,
+    textColor:  tcColorEl.value,
+    outWidth:   parseInt(outWidthEl.value),
+  };
+}
+
+function applyTabState(tab) {
+  // Type
+  curType = tab.type || 'code128';
+  document.querySelectorAll('#type-pills .pill').forEach(p =>
+    p.classList.toggle('active', p.dataset.type === curType));
+  document.getElementById('type-hint').textContent = TYPE_HINTS[curType] || '';
+  document.getElementById('text-pos-row').style.display =
+    (curType === 'ean13' || curType === 'upca') ? 'none' : 'flex';
+
+  // Content
+  contentInp.value = tab.content !== undefined ? tab.content : TYPE_DEFAULTS[curType];
+
+  // Colors
+  fgColor.value = tab.fg || '#000000';
+  fgHex.value   = tab.fg || '#000000';
+  bgColor.value = tab.bg || '#ffffff';
+  bgHex.value   = tab.bg || '#ffffff';
+  bgTransp.checked = !!tab.transparent;
+
+  // Bars
+  barWidthEl.value  = tab.barWidth  !== undefined ? tab.barWidth  : 2;
+  document.getElementById('bw-val').textContent = barWidthEl.value + '×';
+  barHeightEl.value = tab.barHeight !== undefined ? tab.barHeight : 100;
+  document.getElementById('bh-val').textContent = barHeightEl.value;
+  quietZoneEl.value = tab.quietZone !== undefined ? tab.quietZone : 10;
+  document.getElementById('qz-val').textContent = quietZoneEl.value;
+  roundedEl.checked = !!tab.rounded;
+  cornerREl.value   = tab.cornerR  !== undefined ? tab.cornerR   : 16;
+  document.getElementById('cr-val').textContent = cornerREl.value + 'px';
+
+  // Text
+  showTextEl.checked = tab.showText !== false;
+  curTextPos = tab.textPos || 'below';
+  document.querySelectorAll('#text-pos-row .pill').forEach(p =>
+    p.classList.toggle('active', p.dataset.pos === curTextPos));
+  curFont = tab.fontFamily || 'monospace';
+  document.querySelectorAll('#font-pills .pill').forEach(p =>
+    p.classList.toggle('active', p.dataset.font === curFont));
+  fontSizeEl.value = tab.fontSize !== undefined ? tab.fontSize : 14;
+  document.getElementById('fs-val').textContent = fontSizeEl.value + 'px';
+  textGapEl.value  = tab.textGap  !== undefined ? tab.textGap  : 6;
+  document.getElementById('tg-val').textContent = textGapEl.value + 'px';
+  customTcEl.checked = !!tab.customTc;
+  tcColorEl.value  = tab.textColor || '#000000';
+  tcHexEl.value    = tab.textColor || '#000000';
+  document.getElementById('tc-row').style.display = tab.customTc ? 'flex' : 'none';
+
+  // Size
+  outWidthEl.value = tab.outWidth !== undefined ? tab.outWidth : 600;
+  document.getElementById('ow-val').textContent = outWidthEl.value;
+
+  encodeAndRender();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════════════════════
 renderHeader({
@@ -1017,7 +1130,13 @@ renderHeader({
   githubPath: 'barcode',
 });
 initSidebarSections('barcode_prefs', ['sec-type','sec-content','sec-colors','sec-bars','sec-text','sec-size','sec-export']);
-encodeAndRender();
+barcodeCtrl = initTabs({
+  storageKey: 'barcode_tabs',
+  defaultTab: makeDefaultTab,
+  tabLabel:   tabLabel,
+  onSwitch:   applyTabState,
+  onSave:     getTabState,
+}).init();
 </script>
 </body>
 </html>

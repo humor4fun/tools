@@ -298,6 +298,7 @@
 <script src="../utils/toast.js"></script>
 <script src="../utils/clipboard.js"></script>
 <script src="../utils/sidebar.js"></script>
+<script src="../utils/tabs.js"></script>
 <script src="../utils/header.js"></script>
 </head>
 <body>
@@ -939,7 +940,7 @@ function clearSlotOp(i) {
   focusSlot(i);
   updateSummary();
   updateStats();
-  savePrefs();
+  if (transcodeCtrl) { Object.assign(transcodeCtrl.current(), getTabState()); transcodeCtrl.persist(); }
 }
 
 // ── Toggle slot encode/decode mode ───────────────────────────
@@ -948,7 +949,7 @@ function toggleSlotMode(i) {
   renderSlot(i);
   updateSummary();
   runChain();
-  savePrefs();
+  if (transcodeCtrl) { Object.assign(transcodeCtrl.current(), getTabState()); transcodeCtrl.persist(); }
 }
 
 // ── Reorder chain steps ───────────────────────────────────────
@@ -970,7 +971,7 @@ function reorderChain(from, to) {
   focusedSlotIdx = Math.min(focusedSlotIdx, chain.length - 1);
   updateSummary();
   runChain();
-  savePrefs();
+  if (transcodeCtrl) { Object.assign(transcodeCtrl.current(), getTabState()); transcodeCtrl.persist(); }
 }
 
 // ── Focus slot ────────────────────────────────────────────────
@@ -1118,7 +1119,7 @@ async function runChain() {
   }
 
   updateStats();
-  savePrefs();
+  if (transcodeCtrl) { Object.assign(transcodeCtrl.current(), getTabState()); transcodeCtrl.persist(); }
 }
 
 const debouncedRunChain = debounce(runChain, 300);
@@ -1147,7 +1148,7 @@ function resetChain() {
   addStep();
   updateSummary();
   updateStats();
-  savePrefs();
+  if (transcodeCtrl) { Object.assign(transcodeCtrl.current(), getTabState()); transcodeCtrl.persist(); }
 }
 
 // ── Sidebar op buttons ────────────────────────────────────────
@@ -1214,57 +1215,66 @@ $('btn-reset').addEventListener('click', () => resetChain());
 chainInput.addEventListener('input', () => {
   updateStats();
   debouncedRunChain();
+  if (transcodeCtrl) { Object.assign(transcodeCtrl.current(), getTabState()); transcodeCtrl.persist(); transcodeCtrl.renderBar(); }
 });
 
-// ── Persistence ───────────────────────────────────────────────
-function savePrefs() {
-  try {
-    const p = {
-      chainOps: chain.map(s => ({ op: s.op, mode: s.mode || 'encode' })),
-      chainInput: chainInput.value,
-    };
-    localStorage.setItem('transcode_prefs', JSON.stringify(p));
-  } catch(e) {}
+// ── Tabs ──────────────────────────────────────────────────────
+let transcodeCtrl = null;
+
+function makeDefaultTab() {
+  return { chainInput: '', chainOps: [] };
 }
 
-async function loadPrefs() {
-  try {
-    const p = JSON.parse(localStorage.getItem('transcode_prefs') || '{}');
+function tabLabel(tab) {
+  const t = (tab.chainInput || '').trim().slice(0, 22);
+  return t || 'Untitled';
+}
 
-    // Restore input
-    if (p.chainInput) chainInput.value = p.chainInput;
+function getTabState() {
+  return {
+    chainInput: chainInput.value,
+    chainOps: chain.map(s => ({ op: s.op, mode: s.mode || 'encode' })),
+  };
+}
 
-    // Restore chain ops (at least 1 step already exists from init addStep())
-    if (Array.isArray(p.chainOps) && p.chainOps.length > 0) {
-      // Normalise: support both old plain-string format and new {op,mode} format
-      const normalised = p.chainOps.map(item =>
-        item && typeof item === 'object' ? item : { op: item, mode: 'encode' }
-      );
-      // Set op for first step
-      const first = normalised[0];
-      if (first && first.op && OPS[first.op]) {
-        chain[0].op = first.op;
-        chain[0].mode = first.mode || 'encode';
-        renderSlot(0);
-      }
-      // Add and fill remaining steps
-      for (let i = 1; i < Math.min(normalised.length, 100); i++) {
-        addStep();
-        const item = normalised[i];
-        if (item && item.op && OPS[item.op]) {
-          chain[i].op = item.op;
-          chain[i].mode = item.mode || 'encode';
-          renderSlot(i);
-        }
-      }
-      // Focus first empty slot
-      const firstEmpty = chain.findIndex(s => !s.op);
-      focusSlot(firstEmpty !== -1 ? firstEmpty : chain.length - 1);
-      updateSummary();
-      updateAddButtons();
-      if (chainInput.value) await runChain();
+async function applyTabState(tab) {
+  // Clear chain
+  chain.forEach(s => s.node && s.node.remove());
+  chain = [];
+  focusedSlotIdx = 0;
+  chainInput.value = tab.chainInput || '';
+
+  addStep(); // always start with at least one step
+
+  const ops = tab.chainOps || [];
+  if (ops.length > 0) {
+    // Normalise: support both plain-string and {op,mode} formats
+    const normalised = ops.map(item =>
+      item && typeof item === 'object' ? item : { op: item, mode: 'encode' }
+    );
+    // Set first step
+    const first = normalised[0];
+    if (first && first.op && OPS[first.op]) {
+      chain[0].op = first.op;
+      chain[0].mode = first.mode || 'encode';
+      renderSlot(0);
     }
-  } catch(e) {}
+    // Add remaining steps
+    for (let i = 1; i < Math.min(normalised.length, 100); i++) {
+      addStep();
+      const item = normalised[i];
+      if (item && item.op && OPS[item.op]) {
+        chain[i].op = item.op;
+        chain[i].mode = item.mode || 'encode';
+        renderSlot(i);
+      }
+    }
+    const firstEmpty = chain.findIndex(s => !s.op);
+    focusSlot(firstEmpty !== -1 ? firstEmpty : chain.length - 1);
+    updateSummary();
+    updateAddButtons();
+    if (chainInput.value) await runChain();
+  }
   updateStats();
 }
 
@@ -1275,8 +1285,13 @@ renderHeader({
   githubPath: 'transcode',
 });
 initSidebarSections('transcode_prefs', ['sec-encoding','sec-hashing','sec-bases','sec-transforms','sec-ascii']);
-addStep(); // create initial step
-loadPrefs();
+transcodeCtrl = initTabs({
+  storageKey: 'transcode_tabs',
+  defaultTab: makeDefaultTab,
+  tabLabel:   tabLabel,
+  onSwitch:   applyTabState,
+  onSave:     getTabState,
+}).init();
 </script>
 </body>
 </html>
