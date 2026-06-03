@@ -37,7 +37,6 @@
 
     --sidebar-w:   290px;
     --header-h:    48px;
-    --dir-bar-h:   44px;
     --statusbar-h: 38px;
     --radius: 6px;
     --font-mono: 'JetBrains Mono','Fira Code','Cascadia Code',ui-monospace,monospace;
@@ -99,59 +98,167 @@
     min-height: 0;
   }
 
-  #input-wrap, #output-wrap {
-    flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;
+  /* ── Chain summary ───────────────────────────────────────── */
+  #chain-summary {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+    padding: 0 14px;
+    background: var(--bg-sidebar); border-bottom: 1px solid var(--border);
+    min-height: 34px; flex-shrink: 0;
+    font-size: 11px;
+  }
+  .cs-label { color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 4px; }
+  .cs-arrow { color: var(--text-dim); padding: 0 2px; }
+  .cs-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--bg-active); border: 1px solid var(--accent-blue);
+    color: var(--text-link); border-radius: 4px; padding: 1px 7px;
+    font-size: 11px; font-family: var(--font-mono);
+  }
+  .cs-pill-empty {
+    display: inline-flex; align-items: center;
+    color: var(--text-dim); border: 1px dashed var(--border);
+    border-radius: 4px; padding: 1px 7px; font-size: 11px; font-style: italic;
   }
 
-  #output-wrap { background: #0c0f18; }
+  /* ── Chain area ──────────────────────────────────────────── */
+  #chain-area {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+    padding: 0 0 40px;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  #chain-area::-webkit-scrollbar { width: 6px; }
+  #chain-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
+  /* ── Pane label (input / output) ─────────────────────────── */
   .pane-label {
-    padding: 3px 16px 3px;
+    padding: 3px 14px 3px;
     font-size: 10px; font-weight: 600; color: var(--text-dim);
     text-transform: uppercase; letter-spacing: 0.08em;
     background: var(--bg-sidebar); border-bottom: 1px solid var(--border-light);
     flex-shrink: 0; display: flex; align-items: center; gap: 8px; height: 26px;
   }
+  .pane-label-right { margin-left: auto; display: flex; align-items: center; gap: 4px; }
 
-  #input, #output {
-    flex: 1; width: 100%; background: transparent; color: var(--text);
+  /* ── Input node ──────────────────────────────────────────── */
+  #chain-input-node { border-bottom: 1px solid var(--border-light); }
+  #chain-input {
+    width: 100%; height: 140px;
+    background: var(--bg); color: var(--text);
     font-family: var(--font-mono); font-size: 13px; line-height: 1.7;
     border: none; outline: none; resize: none;
-    padding: 18px 24px; tab-size: 2;
+    padding: 14px 20px; tab-size: 2;
     white-space: pre-wrap; overflow-wrap: break-word;
-    overflow-y: auto; overflow-x: auto;
-    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
-    min-height: 0;
+    overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent;
   }
-  #input::-webkit-scrollbar, #output::-webkit-scrollbar { width: 6px; }
-  #input::-webkit-scrollbar-thumb, #output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-  #output { color: var(--text-muted); }
-  #output.is-error  { color: #f85149; }
-  #output.is-loading { color: var(--text-dim); font-style: italic; }
+  #chain-input::-webkit-scrollbar { width: 6px; }
+  #chain-input::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-  /* ── Direction bar ───────────────────────────────────────── */
-  #direction-bar {
-    flex-shrink: 0; height: var(--dir-bar-h);
-    display: flex; align-items: center; gap: 6px;
-    background: var(--bg-sidebar);
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    padding: 0 14px;
+  /* ── Chain connector (↓ arrow) ───────────────────────────── */
+  .chain-connector {
+    display: flex; align-items: center; justify-content: center;
+    height: 28px; color: var(--text-dim); font-size: 14px; flex-shrink: 0;
+    user-select: none;
   }
-  .dir-btn {
-    display: flex; align-items: center; gap: 5px;
+
+  /* ── Chain slot ──────────────────────────────────────────── */
+  .chain-slot-wrap {
+    padding: 0 14px 8px;
+  }
+  .chain-slot {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px dashed var(--border); border-radius: var(--radius);
+    height: 40px; padding: 0 12px;
+    cursor: pointer; user-select: none;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    font-size: 12px; color: var(--text-dim);
+    position: relative;
+  }
+  .chain-slot:hover { border-color: var(--text-dim); }
+  .chain-slot.focused {
+    border-color: var(--accent-blue);
+    border-style: solid;
+    box-shadow: 0 0 0 2px rgba(31,111,235,0.2);
+    color: var(--text-muted);
+  }
+  .chain-slot.drag-over {
+    border-style: solid;
+    border-color: var(--accent-blue);
+    background: rgba(31,111,235,0.08);
+    color: var(--text-muted);
+  }
+  .chain-slot.filled {
+    border-style: solid;
+    border-color: var(--accent-blue);
+    background: var(--bg-active);
+    cursor: default;
+  }
+  .slot-placeholder { flex: 1; font-style: italic; }
+  .slot-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(31,111,235,0.15); border: 1px solid var(--accent-blue);
+    color: var(--text-link); border-radius: 4px; padding: 2px 8px;
+    font-size: 12px; font-family: var(--font-mono); font-weight: 500;
+  }
+  .slot-clear-btn {
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; font-size: 13px; padding: 0 2px; line-height: 1;
+    display: flex; align-items: center;
+    transition: color 0.12s;
+  }
+  .slot-clear-btn:hover { color: #f85149; }
+  .slot-remove-btn {
+    margin-left: auto;
+    background: none; border: none; color: var(--text-dim);
+    cursor: pointer; font-size: 15px; padding: 0 2px 1px; line-height: 1;
+    display: flex; align-items: center;
+    transition: color 0.12s;
+    opacity: 0.6;
+  }
+  .slot-remove-btn:hover { color: #f85149; opacity: 1; }
+  .slot-remove-btn:disabled { opacity: 0.2; cursor: default; }
+
+  /* ── Chain output ────────────────────────────────────────── */
+  .chain-output-wrap { border-top: 1px solid var(--border-light); }
+  .chain-output {
+    width: 100%; height: 120px;
+    background: #0c0f18; color: var(--text-muted);
+    font-family: var(--font-mono); font-size: 13px; line-height: 1.7;
+    border: none; outline: none; resize: none;
+    padding: 14px 20px; tab-size: 2;
+    white-space: pre-wrap; overflow-wrap: break-word;
+    overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    transition: height 0.2s ease;
+    display: block;
+  }
+  .chain-output::-webkit-scrollbar { width: 6px; }
+  .chain-output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .chain-output.collapsed { height: 60px; }
+  .chain-output.is-error  { color: #f85149; }
+  .chain-output.is-loading { color: var(--text-dim); font-style: italic; }
+
+  /* ── Add step button ─────────────────────────────────────── */
+  .chain-add-btn-wrap {
+    display: flex; justify-content: center; padding: 8px 14px 4px;
+    border-top: 1px solid var(--border-light);
+  }
+  .chain-add-btn {
+    display: flex; align-items: center; gap: 6px;
     background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius);
-    color: var(--text-muted); font-size: 12px; font-family: var(--font-sans);
-    padding: 5px 12px; cursor: pointer; height: 28px; white-space: nowrap;
+    color: var(--text-dim); font-size: 12px; font-family: var(--font-sans);
+    padding: 5px 18px; cursor: pointer; height: 28px;
     transition: background 0.15s, color 0.15s, border-color 0.15s;
   }
-  .dir-btn:hover:not(:disabled) { background: var(--bg-active); color: var(--text); border-color: var(--accent-blue); }
-  .dir-btn:disabled { opacity: 0.3; cursor: default; }
-  #active-op-label {
-    flex: 1; text-align: center;
-    font-size: 11px; color: var(--text-dim); font-family: var(--font-mono);
+  .chain-add-btn:hover { background: var(--bg-active); color: var(--text); border-color: var(--accent-blue); }
+  .chain-add-btn:disabled { opacity: 0.3; cursor: default; }
+
+  /* ── Copy output micro button ────────────────────────────── */
+  .copy-out-btn {
+    background: none; border: none; color: var(--text-dim); cursor: pointer;
+    padding: 2px 5px; border-radius: 3px; display: flex; align-items: center;
+    transition: color 0.12s, background 0.12s;
   }
-  .dir-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; margin: 0 2px; }
+  .copy-out-btn:hover { color: var(--text-muted); background: var(--bg-hover); }
 
   /* ── Sidebar ─────────────────────────────────────────────── */
   #sidebar {
@@ -196,19 +303,21 @@
     display: flex; align-items: center; width: 100%;
     background: transparent; border: 1px solid transparent; border-radius: 5px;
     color: var(--text-muted); font-size: 12px; font-family: var(--font-sans);
-    padding: 5px 8px; cursor: pointer; text-align: left; gap: 7px;
+    padding: 5px 8px; cursor: grab; text-align: left; gap: 7px;
     transition: background 0.12s, color 0.12s, border-color 0.12s;
     margin-bottom: 1px;
   }
   .op-btn:hover { background: var(--bg-hover); color: var(--text); }
-  .op-btn.active {
-    background: var(--bg-active); color: var(--text-link);
-    border-color: var(--accent-blue);
-  }
   .op-btn-note {
     font-size: 10px; color: var(--text-dim); margin-left: auto; white-space: nowrap;
   }
-  .op-btn.active .op-btn-note { color: var(--text-muted); }
+
+  /* ── Sidebar drag hint ───────────────────────────────────── */
+  .sb-hint {
+    padding: 10px 12px 6px;
+    font-size: 10px; color: var(--text-dim); line-height: 1.5;
+    border-bottom: 1px solid var(--border);
+  }
 
   /* ── Toast ───────────────────────────────────────────────── */
   #toast {
@@ -244,7 +353,7 @@
     <span id="header-title">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
         <path d="M1 4a.5.5 0 0 1 .5-.5h11.793l-2.147-2.146a.5.5 0 0 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L13.293 4.5H1.5A.5.5 0 0 1 1 4z"/>
-        <path d="M15 12a.5.5 0 0 1-.5.5H2.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 0 1 .708.708L2.707 11.5H14.5a.5.5 0 0 1 .5.5z"/>
+        <path d="M15 12a.5.5 0 0 1-.5.5H2.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 0 1 .708.708L2.707 11.5H14.5a.5.5 0 0 1 .5.5z" opacity="0.6"/>
       </svg>
       transcode
     </span>
@@ -252,6 +361,10 @@
       <button class="hdr-btn" id="btn-copy-output">
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/></svg>
         Copy output
+      </button>
+      <button class="hdr-btn" id="btn-reset">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41m-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9"/><path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5 5 0 0 0 8 3M3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9z"/></svg>
+        Reset
       </button>
       <a id="btn-hdr-gh" href="https://github.com/humor4fun/tools/tree/main/transcode" target="_blank" rel="noopener">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
@@ -263,30 +376,32 @@
   <!-- ── Main pane ──────────────────────────────────────────── -->
   <div id="main-pane">
 
-    <div id="input-wrap">
-      <div class="pane-label">Input</div>
-      <textarea id="input"
-        placeholder="Paste or type text to encode / decode…"
-        spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+    <!-- Chain summary bar -->
+    <div id="chain-summary">
+      <span class="cs-label">Chain</span>
     </div>
 
-    <div id="direction-bar">
-      <button class="dir-btn" id="btn-encode">Encode →</button>
-      <span id="active-op-label">Base64</span>
-      <button class="dir-btn" id="btn-decode">← Decode</button>
-      <div class="dir-sep"></div>
-      <button class="dir-btn" id="btn-swap">⇅ Swap</button>
-    </div>
+    <!-- Scrollable chain area -->
+    <div id="chain-area">
 
-    <div id="output-wrap">
-      <div class="pane-label">Output</div>
-      <textarea id="output" readonly spellcheck="false"></textarea>
+      <!-- Input node (fixed, always at top) -->
+      <div id="chain-input-node">
+        <div class="pane-label">Input</div>
+        <textarea id="chain-input"
+          placeholder="Paste or type text to encode…"
+          spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+      </div>
+
+      <!-- Chain steps are injected here by JS -->
+
     </div>
 
   </div>
 
   <!-- ── Sidebar ────────────────────────────────────────────── -->
   <aside id="sidebar">
+
+    <div class="sb-hint">Drag or click an operation to assign it to the focused slot (highlighted in blue).</div>
 
     <!-- Encoding -->
     <div class="sb-section" id="sec-encoding">
@@ -298,11 +413,11 @@
         <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
       <div class="sb-section-body open" id="body-encoding">
-        <button class="op-btn active" data-op="base64">Base64</button>
-        <button class="op-btn" data-op="base64url">Base64 URL-safe</button>
-        <button class="op-btn" data-op="url-percent">URL Percent-Encode</button>
-        <button class="op-btn" data-op="html-entities">HTML Entities</button>
-        <button class="op-btn" data-op="unicode-escape">Unicode Escape (\u)</button>
+        <button class="op-btn" data-op="base64" draggable="true">Base64</button>
+        <button class="op-btn" data-op="base64url" draggable="true">Base64 URL-safe</button>
+        <button class="op-btn" data-op="url-percent" draggable="true">URL Percent-Encode</button>
+        <button class="op-btn" data-op="html-entities" draggable="true">HTML Entities</button>
+        <button class="op-btn" data-op="unicode-escape" draggable="true">Unicode Escape (\u)</button>
       </div>
     </div>
 
@@ -316,10 +431,10 @@
         <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
       <div class="sb-section-body open" id="body-hashing">
-        <button class="op-btn" data-op="md5">MD5<span class="op-btn-note">file lookup ↗</span></button>
-        <button class="op-btn" data-op="sha1">SHA-1<span class="op-btn-note">file lookup ↗</span></button>
-        <button class="op-btn" data-op="sha256">SHA-256<span class="op-btn-note">file lookup ↗</span></button>
-        <button class="op-btn" data-op="sha512">SHA-512<span class="op-btn-note">one-way</span></button>
+        <button class="op-btn" data-op="md5" draggable="true">MD5<span class="op-btn-note">one-way</span></button>
+        <button class="op-btn" data-op="sha1" draggable="true">SHA-1<span class="op-btn-note">one-way</span></button>
+        <button class="op-btn" data-op="sha256" draggable="true">SHA-256<span class="op-btn-note">one-way</span></button>
+        <button class="op-btn" data-op="sha512" draggable="true">SHA-512<span class="op-btn-note">one-way</span></button>
       </div>
     </div>
 
@@ -333,10 +448,10 @@
         <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
       <div class="sb-section-body open" id="body-bases">
-        <button class="op-btn" data-op="hex">Hex (bytes)</button>
-        <button class="op-btn" data-op="binary">Binary (bytes)</button>
-        <button class="op-btn" data-op="octal">Octal (bytes)</button>
-        <button class="op-btn" data-op="ascii">ASCII Ordinals</button>
+        <button class="op-btn" data-op="hex" draggable="true">Hex (bytes)</button>
+        <button class="op-btn" data-op="binary" draggable="true">Binary (bytes)</button>
+        <button class="op-btn" data-op="octal" draggable="true">Octal (bytes)</button>
+        <button class="op-btn" data-op="ascii" draggable="true">ASCII Ordinals</button>
       </div>
     </div>
 
@@ -350,12 +465,12 @@
         <svg class="sb-chevron open" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
       <div class="sb-section-body open" id="body-transforms">
-        <button class="op-btn" data-op="rot13">ROT13<span class="op-btn-note">symmetric</span></button>
-        <button class="op-btn" data-op="rot47">ROT47<span class="op-btn-note">symmetric</span></button>
-        <button class="op-btn" data-op="reverse">Reverse string<span class="op-btn-note">symmetric</span></button>
-        <button class="op-btn" data-op="pretty-json">Pretty JSON</button>
-        <button class="op-btn" data-op="minify-json">Minify JSON</button>
-        <button class="op-btn" data-op="morse">Morse Code</button>
+        <button class="op-btn" data-op="rot13" draggable="true">ROT13<span class="op-btn-note">symmetric</span></button>
+        <button class="op-btn" data-op="rot47" draggable="true">ROT47<span class="op-btn-note">symmetric</span></button>
+        <button class="op-btn" data-op="reverse" draggable="true">Reverse string<span class="op-btn-note">symmetric</span></button>
+        <button class="op-btn" data-op="pretty-json" draggable="true">Pretty JSON</button>
+        <button class="op-btn" data-op="minify-json" draggable="true">Minify JSON</button>
+        <button class="op-btn" data-op="morse" draggable="true">Morse Code</button>
       </div>
     </div>
 
@@ -363,9 +478,7 @@
 
   <!-- ── Status bar ─────────────────────────────────────────── -->
   <div id="statusbar">
-    <span id="stats">Ready · select an operation from the sidebar</span>
-    <span class="sb-sep">·</span>
-    <span id="hash-note" style="font-size:10px;color:var(--text-dim);display:none">Hash decode uses CIRCL hashlookup (requires network)</span>
+    <span id="stats">Ready · add a step from the sidebar</span>
   </div>
 
 </div>
@@ -377,18 +490,16 @@
 
 // ── DOM refs ──────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
-const inputEl  = $('input');
-const outputEl = $('output');
-const statsEl  = $('stats');
-const toastEl  = $('toast');
-const activeOpLbl = $('active-op-label');
-const btnEncode   = $('btn-encode');
-const btnDecode   = $('btn-decode');
-const btnSwap     = $('btn-swap');
-const hashNote    = $('hash-note');
+const chainInput   = $('chain-input');
+const chainArea    = $('chain-area');
+const chainSummary = $('chain-summary');
+const statsEl      = $('stats');
+const toastEl      = $('toast');
 
-// ── State ─────────────────────────────────────────────────────
-let activeOp = 'base64';
+// ── Chain state ───────────────────────────────────────────────
+// chain[i] = { op: null|string, node, slotEl, outputEl, addBtnWrap }
+let chain = [];
+let focusedSlotIdx = 0;
 
 // ── Morse tables ──────────────────────────────────────────────
 const MORSE_ENC = {
@@ -468,72 +579,23 @@ async function shaHash(str, algo) {
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
-// ── CIRCL hashlookup ──────────────────────────────────────────
-// Public file-hash database: NSRL + Ubuntu/Kali/OpenSUSE packages + CDNJS etc.
-// Returns file metadata if hash matches a known file; 404 if not found.
-async function circlLookup(hash, type) {
-  const clean = hash.trim().replace(/\s/g, '');
-  const url = `https://hashlookup.circl.lu/lookup/${type}/${clean.toUpperCase()}`;
-  let res;
-  try {
-    res = await fetch(url, { headers: { accept: 'application/json' } });
-  } catch(e) {
-    throw new Error(`Network error reaching CIRCL API — check your connection. (${e.message})`);
-  }
-  if (res.status === 404) {
-    return `Not found in CIRCL hashlookup database.\n\nThe hash "${clean}" does not match any known file in NSRL, Ubuntu, Kali, or other indexed sources.`;
-  }
-  if (res.status === 400) {
-    return `Invalid hash format (HTTP 400). Expected a ${type.toUpperCase()} hash.`;
-  }
-  if (!res.ok) throw new Error(`CIRCL API returned HTTP ${res.status}`);
-  const d = await res.json();
-  const lines = [
-    `Source:      CIRCL hashlookup`,
-    `Trust:       ${d['hashlookup:trust'] !== undefined ? d['hashlookup:trust']+'/100' : 'n/a'}`,
-    '',
-  ];
-  if (d.FileName)   lines.push(`FileName:    ${d.FileName}`);
-  if (d.FileSize)   lines.push(`FileSize:    ${Number(d.FileSize).toLocaleString()} bytes`);
-  const pn = d.ProductCode?.ProductName || d.ProductName;
-  const pv = d.ProductCode?.ProductVersion || d.ProductVersion;
-  if (pn) lines.push(`Product:     ${pn}${pv ? ' ' + pv : ''}`);
-  if (d.source)     lines.push(`DB Source:   ${d.source}`);
-  if (d.db)         lines.push(`DB:          ${d.db}`);
-  lines.push('');
-  if (d.MD5)        lines.push(`MD5:         ${d.MD5}`);
-  if (d['SHA-1'])   lines.push(`SHA-1:       ${d['SHA-1']}`);
-  if (d['SHA-256']) lines.push(`SHA-256:     ${d['SHA-256']}`);
-  if (d.CRC32)      lines.push(`CRC32:       ${d.CRC32}`);
-  return lines.filter((l,i,a) => !(l===''&&(i===0||a[i-1]===''))).join('\n');
-}
-
 // ── Operations map ────────────────────────────────────────────
 const OPS = {
-  // ── Encoding ────────────────────────────────
   'base64': {
     label: 'Base64',
     encode: s => btoa(unescape(encodeURIComponent(s))),
-    decode: s => decodeURIComponent(escape(atob(s.trim().replace(/\s/g, '')))),
   },
   'base64url': {
     label: 'Base64 URL-safe',
     encode: s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),
-    decode: s => {
-      let t = s.trim().replace(/\s/g,'').replace(/-/g,'+').replace(/_/g,'/');
-      while (t.length % 4) t += '=';
-      return decodeURIComponent(escape(atob(t)));
-    },
   },
   'url-percent': {
     label: 'URL Percent-Encode',
     encode: s => encodeURIComponent(s),
-    decode: s => decodeURIComponent(s),
   },
   'html-entities': {
     label: 'HTML Entities',
     encode: s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'),
-    decode: s => { const d=document.createElement('div'); d.innerHTML=s; return d.textContent; },
   },
   'unicode-escape': {
     label: 'Unicode Escape (\\u)',
@@ -542,75 +604,41 @@ const OPS = {
       if (cp <= 127) return c;
       return cp > 0xffff ? `\\u{${cp.toString(16)}}` : `\\u${cp.toString(16).padStart(4,'0')}`;
     }).join(''),
-    decode: s => s
-      .replace(/\\u\{([0-9a-fA-F]+)\}/g, (_,h) => String.fromCodePoint(parseInt(h,16)))
-      .replace(/\\u([0-9a-fA-F]{4})/g,   (_,h) => String.fromCharCode(parseInt(h,16))),
   },
-
-  // ── Hashing ─────────────────────────────────
   'md5': {
     label: 'MD5',
     encode: s => md5(s),
-    decode: null, lookupType: 'md5',
   },
   'sha1': {
     label: 'SHA-1',
     encode: s => shaHash(s, 'SHA-1'),
-    decode: null, lookupType: 'sha1',
   },
   'sha256': {
     label: 'SHA-256',
     encode: s => shaHash(s, 'SHA-256'),
-    decode: null, lookupType: 'sha256',
   },
   'sha512': {
     label: 'SHA-512',
     encode: s => shaHash(s, 'SHA-512'),
-    decode: null, lookupType: null, // CIRCL doesn't index SHA-512
   },
-
-  // ── Number bases ─────────────────────────────
   'hex': {
     label: 'Hex',
     encode: s => [...new TextEncoder().encode(s)].map(b=>b.toString(16).padStart(2,'0')).join(' '),
-    decode: s => {
-      const bytes = s.trim().split(/\s+/).map(h=>parseInt(h,16));
-      if (bytes.some(isNaN)) throw new Error('Invalid hex — expected space-separated hex bytes');
-      return new TextDecoder().decode(new Uint8Array(bytes));
-    },
   },
   'binary': {
     label: 'Binary',
     encode: s => [...new TextEncoder().encode(s)].map(b=>b.toString(2).padStart(8,'0')).join(' '),
-    decode: s => {
-      const bytes = s.trim().split(/\s+/).map(b=>parseInt(b,2));
-      if (bytes.some(isNaN)) throw new Error('Invalid binary — expected space-separated 8-bit groups');
-      return new TextDecoder().decode(new Uint8Array(bytes));
-    },
   },
   'octal': {
     label: 'Octal',
     encode: s => [...new TextEncoder().encode(s)].map(b=>b.toString(8).padStart(3,'0')).join(' '),
-    decode: s => {
-      const bytes = s.trim().split(/\s+/).map(o=>parseInt(o,8));
-      if (bytes.some(isNaN)) throw new Error('Invalid octal — expected space-separated octal bytes');
-      return new TextDecoder().decode(new Uint8Array(bytes));
-    },
   },
   'ascii': {
     label: 'ASCII Ordinals',
     encode: s => [...new TextEncoder().encode(s)].map(b=>String(b)).join(' '),
-    decode: s => {
-      const bytes = s.trim().split(/\s+/).map(n=>parseInt(n,10));
-      if (bytes.some(isNaN)) throw new Error('Invalid ordinals — expected space-separated decimal numbers');
-      return new TextDecoder().decode(new Uint8Array(bytes));
-    },
   },
-
-  // ── Text transforms ──────────────────────────
   'rot13': {
     label: 'ROT13',
-    symmetric: true,
     encode: s => s.replace(/[a-zA-Z]/g, c => {
       const b = c <= 'Z' ? 65 : 97;
       return String.fromCharCode(((c.charCodeAt(0)-b+13)%26)+b);
@@ -618,136 +646,390 @@ const OPS = {
   },
   'rot47': {
     label: 'ROT47',
-    symmetric: true,
     encode: s => s.replace(/[!-~]/g, c => String.fromCharCode(((c.charCodeAt(0)-33+47)%94)+33)),
   },
   'reverse': {
     label: 'Reverse string',
-    symmetric: true,
     encode: s => [...s].reverse().join(''),
   },
   'pretty-json': {
     label: 'Pretty JSON',
     encode: s => JSON.stringify(JSON.parse(s.trim()), null, 2),
-    decode: s => JSON.stringify(JSON.parse(s.trim())),
   },
   'minify-json': {
     label: 'Minify JSON',
     encode: s => JSON.stringify(JSON.parse(s.trim())),
-    decode: s => JSON.stringify(JSON.parse(s.trim()), null, 2),
   },
   'morse': {
     label: 'Morse Code',
     encode: s => s.toUpperCase().split('').map(c => c===' ' ? ' / ' : (MORSE_ENC[c] ? MORSE_ENC[c]+' ' : '')).join('').trim(),
-    decode: s => s.trim().split(/\s*\/\s*/).map(word =>
-      word.trim().split(/\s+/).map(code => MORSE_DEC[code] || '?').join('')
-    ).join(' '),
   },
 };
 
-// ── Set active operation ──────────────────────────────────────
-function setActiveOp(key) {
-  activeOp = key;
-  const op = OPS[key];
-  if (!op) return;
+// ── Slot rendering ────────────────────────────────────────────
+function renderSlot(i) {
+  const step = chain[i];
+  const slotEl = step.slotEl;
+  const op = step.op;
 
-  activeOpLbl.textContent = op.label;
+  slotEl.innerHTML = '';
+  slotEl.onclick = null;
 
-  // Highlight selected button
-  document.querySelectorAll('.op-btn[data-op]').forEach(b => {
-    b.classList.toggle('active', b.dataset.op === key);
-  });
+  if (op) {
+    slotEl.className = 'chain-slot filled';
+    const badge = document.createElement('span');
+    badge.className = 'slot-badge';
+    badge.textContent = OPS[op].label;
 
-  // Configure decode button
-  if (op.symmetric) {
-    btnDecode.textContent = '⇄ Symmetric';
-    btnDecode.disabled = false;
-  } else if (op.lookupType) {
-    btnDecode.textContent = '← File Lookup (CIRCL)';
-    btnDecode.disabled = false;
-  } else if (op.decode) {
-    btnDecode.textContent = '← Decode';
-    btnDecode.disabled = false;
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'slot-clear-btn';
+    clearBtn.title = 'Clear operation';
+    clearBtn.textContent = '×';
+    clearBtn.onclick = (e) => { e.stopPropagation(); clearSlotOp(i); };
+    badge.appendChild(clearBtn);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'slot-remove-btn';
+    removeBtn.title = 'Remove this step';
+    removeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg>';
+    removeBtn.disabled = chain.length <= 1;
+    removeBtn.onclick = (e) => { e.stopPropagation(); removeStep(i); };
+
+    slotEl.appendChild(badge);
+    slotEl.appendChild(removeBtn);
   } else {
-    // SHA-512 or no decode path
-    btnDecode.textContent = '← No lookup';
-    btnDecode.disabled = true;
+    slotEl.className = 'chain-slot' + (focusedSlotIdx === i ? ' focused' : '');
+    const ph = document.createElement('span');
+    ph.className = 'slot-placeholder';
+    ph.textContent = 'Drag or click an operation from the sidebar';
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'slot-remove-btn';
+    removeBtn.title = 'Remove this step';
+    removeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg>';
+    removeBtn.disabled = chain.length <= 1;
+    removeBtn.onclick = (e) => { e.stopPropagation(); removeStep(i); };
+    slotEl.appendChild(ph);
+    slotEl.appendChild(removeBtn);
+    slotEl.onclick = () => focusSlot(i);
+  }
+}
+
+// ── Add step ──────────────────────────────────────────────────
+function addStep() {
+  if (chain.length >= 100) {
+    toast('Maximum 100 steps reached', 'warn');
+    return;
   }
 
-  // Show/hide hash note
-  hashNote.style.display = (op.lookupType) ? '' : 'none';
+  const stepNum = chain.length + 1;
+
+  // Collapse all previous outputs
+  chain.forEach(s => s.outputEl.classList.add('collapsed'));
+
+  // Hide previous add buttons
+  chain.forEach(s => { if (s.addBtnWrap) s.addBtnWrap.style.display = 'none'; });
+
+  // Build node
+  const node = document.createElement('div');
+  node.className = 'chain-node';
+
+  // Connector arrow
+  const connector = document.createElement('div');
+  connector.className = 'chain-connector';
+  connector.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" opacity="0.4"><path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1"/></svg>';
+
+  // Slot
+  const slotWrap = document.createElement('div');
+  slotWrap.className = 'chain-slot-wrap';
+  const slotEl = document.createElement('div');
+  slotEl.className = 'chain-slot';
+  slotEl.dataset.idx = chain.length;
+
+  // Drag-and-drop on slot
+  slotEl.addEventListener('dragover', e => {
+    e.preventDefault();
+    slotEl.classList.add('drag-over');
+  });
+  slotEl.addEventListener('dragleave', () => slotEl.classList.remove('drag-over'));
+  slotEl.addEventListener('drop', e => {
+    e.preventDefault();
+    slotEl.classList.remove('drag-over');
+    const op = e.dataTransfer.getData('text/plain');
+    if (op && OPS[op]) {
+      const idx = parseInt(slotEl.dataset.idx);
+      setSlotOp(idx, op);
+    }
+  });
+
+  slotWrap.appendChild(slotEl);
+
+  // Output
+  const outputWrap = document.createElement('div');
+  outputWrap.className = 'chain-output-wrap';
+
+  const outputLabel = document.createElement('div');
+  outputLabel.className = 'pane-label';
+  outputLabel.innerHTML = `<span>Output #${stepNum}</span>`;
+  const labelRight = document.createElement('div');
+  labelRight.className = 'pane-label-right';
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'copy-out-btn';
+  copyBtn.title = `Copy output #${stepNum}`;
+  copyBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/></svg>';
+  labelRight.appendChild(copyBtn);
+  outputLabel.appendChild(labelRight);
+
+  const outputEl = document.createElement('textarea');
+  outputEl.className = 'chain-output';
+  outputEl.readOnly = true;
+  outputEl.spellcheck = false;
+
+  copyBtn.addEventListener('click', async () => {
+    if (!outputEl.value) { toast('Nothing to copy', 'warn'); return; }
+    try {
+      await navigator.clipboard.writeText(outputEl.value);
+      toast(`Output #${stepNum} copied`, 'ok');
+    } catch(e) { toast('Copy failed', 'err'); }
+  });
+
+  outputWrap.appendChild(outputLabel);
+  outputWrap.appendChild(outputEl);
+
+  // Add step button
+  const addBtnWrap = document.createElement('div');
+  addBtnWrap.className = 'chain-add-btn-wrap';
+  const addBtn = document.createElement('button');
+  addBtn.className = 'chain-add-btn';
+  addBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/></svg> Add step';
+  addBtn.addEventListener('click', addStep);
+  addBtnWrap.appendChild(addBtn);
+
+  node.appendChild(connector);
+  node.appendChild(slotWrap);
+  node.appendChild(outputWrap);
+  node.appendChild(addBtnWrap);
+  chainArea.appendChild(node);
+
+  const idx = chain.length;
+  chain.push({ op: null, node, slotEl, outputEl, addBtnWrap });
+
+  // Update dataset idx for all slots (in case of reindex)
+  refreshSlotIndices();
+  renderSlot(idx);
+  focusSlot(idx);
+  updateAddButtons();
+  updateSummary();
+  updateStats();
+}
+
+// ── Remove step ───────────────────────────────────────────────
+function removeStep(i) {
+  if (chain.length <= 1) return;
+
+  chain[i].node.remove();
+  chain.splice(i, 1);
+
+  // Reindex
+  refreshSlotIndices();
+
+  // Re-render all slots (remove buttons need to be updated)
+  chain.forEach((_, idx) => renderSlot(idx));
+
+  // Renumber output labels
+  renumberOutputs();
+
+  // Uncollapse all except the last
+  chain.forEach((s, idx) => {
+    if (idx < chain.length - 1) {
+      s.outputEl.classList.add('collapsed');
+    } else {
+      s.outputEl.classList.remove('collapsed');
+    }
+  });
+
+  // Show add btn only on last step
+  updateAddButtons();
+
+  // Adjust focused slot
+  focusedSlotIdx = Math.min(focusedSlotIdx, chain.length - 1);
+  focusSlot(focusedSlotIdx);
+
+  // Clear outputs from removed position onward (they've been spliced)
+  // Clear all outputs that are now invalid
+  chain.forEach(s => { s.outputEl.value = ''; s.outputEl.className = 'chain-output' + (s.outputEl.classList.contains('collapsed') ? ' collapsed' : ''); });
+
+  runChain();
+  updateSummary();
+  updateStats();
+}
+
+// ── Set slot op ───────────────────────────────────────────────
+function setSlotOp(i, key) {
+  if (!OPS[key]) return;
+  chain[i].op = key;
+  renderSlot(i);
+  updateSummary();
+  // Advance focus to next empty slot
+  const nextEmpty = chain.findIndex((s, idx) => idx > i && !s.op);
+  if (nextEmpty !== -1) focusSlot(nextEmpty);
+  else focusSlot(i); // stay on this slot (all filled)
+  runChain();
+}
+
+// ── Clear slot op ─────────────────────────────────────────────
+function clearSlotOp(i) {
+  chain[i].op = null;
+  // Clear this output and all downstream outputs
+  for (let j = i; j < chain.length; j++) {
+    chain[j].outputEl.value = '';
+    // Preserve collapsed class
+    const isCollapsed = chain[j].outputEl.classList.contains('collapsed');
+    chain[j].outputEl.className = 'chain-output' + (isCollapsed ? ' collapsed' : '');
+  }
+  renderSlot(i);
+  focusSlot(i);
+  updateSummary();
+  updateStats();
+  savePrefs();
+}
+
+// ── Focus slot ────────────────────────────────────────────────
+function focusSlot(i) {
+  focusedSlotIdx = i;
+  chain.forEach((s, idx) => {
+    if (!s.op) { // only update unfilled slots' focused state
+      s.slotEl.classList.toggle('focused', idx === i);
+    }
+  });
+}
+
+// ── Refresh slot indices ──────────────────────────────────────
+function refreshSlotIndices() {
+  chain.forEach((s, i) => { s.slotEl.dataset.idx = i; });
+}
+
+// ── Renumber output labels ────────────────────────────────────
+function renumberOutputs() {
+  chain.forEach((s, i) => {
+    const label = s.node.querySelector('.pane-label span');
+    if (label) label.textContent = `Output #${i + 1}`;
+    const copyBtn = s.node.querySelector('.copy-out-btn');
+    if (copyBtn) copyBtn.title = `Copy output #${i + 1}`;
+  });
+}
+
+// ── Update add button visibility ──────────────────────────────
+function updateAddButtons() {
+  chain.forEach((s, i) => {
+    s.addBtnWrap.style.display = (i === chain.length - 1) ? '' : 'none';
+  });
+}
+
+// ── Update chain summary ──────────────────────────────────────
+function updateSummary() {
+  chainSummary.innerHTML = '<span class="cs-label">Chain</span>';
+  chain.forEach((s, i) => {
+    if (i > 0) {
+      const arrow = document.createElement('span');
+      arrow.className = 'cs-arrow';
+      arrow.textContent = '→';
+      chainSummary.appendChild(arrow);
+    }
+    const pill = document.createElement('span');
+    if (s.op) {
+      pill.className = 'cs-pill';
+      pill.textContent = OPS[s.op].label;
+    } else {
+      pill.className = 'cs-pill-empty';
+      pill.textContent = `Step ${i + 1}`;
+    }
+    chainSummary.appendChild(pill);
+  });
+}
+
+// ── Run chain ─────────────────────────────────────────────────
+let runChainTimer = null;
+
+async function runChain() {
+  const inputVal = chainInput.value;
+  let prevVal = inputVal;
+
+  for (let i = 0; i < chain.length; i++) {
+    if (!chain[i].op) break;
+    const op = OPS[chain[i].op];
+    const outEl = chain[i].outputEl;
+    const isCollapsed = outEl.classList.contains('collapsed');
+    outEl.className = 'chain-output' + (isCollapsed ? ' collapsed' : '') + ' is-loading';
+    outEl.value = 'Running…';
+    try {
+      const result = await Promise.resolve(op.encode(prevVal));
+      const val = typeof result === 'string' ? result : String(result);
+      outEl.value = val;
+      outEl.className = 'chain-output' + (isCollapsed ? ' collapsed' : '');
+      prevVal = val;
+    } catch(e) {
+      outEl.value = 'Error: ' + e.message;
+      outEl.className = 'chain-output' + (isCollapsed ? ' collapsed' : '') + ' is-error';
+      toast(e.message.slice(0, 80), 'err');
+      break;
+    }
+  }
 
   updateStats();
   savePrefs();
 }
 
-// ── Run encode or decode ──────────────────────────────────────
-async function runDir(dir) {
-  const op = OPS[activeOp];
-  if (!op) return;
-
-  const text = inputEl.value;
-  if (!text.trim()) { toast('Nothing in input', 'warn'); return; }
-
-  outputEl.className = 'is-loading';
-  outputEl.value = dir === 'encode' ? 'Encoding…' : 'Looking up…';
-  btnEncode.disabled = true;
-  btnDecode.disabled = true;
-  btnSwap.disabled = true;
-
-  try {
-    let result;
-
-    if (dir === 'encode') {
-      result = await Promise.resolve(op.encode(text));
-    } else {
-      // decode direction
-      if (op.symmetric) {
-        result = await Promise.resolve(op.encode(text));
-      } else if (op.lookupType) {
-        result = await circlLookup(text, op.lookupType);
-      } else if (op.decode) {
-        result = await Promise.resolve(op.decode(text));
-      } else {
-        toast('No decode available for this operation', 'warn');
-        outputEl.value = '';
-        outputEl.className = '';
-        return;
-      }
-    }
-
-    outputEl.value = typeof result === 'string' ? result : String(result);
-    outputEl.className = '';
-  } catch (e) {
-    outputEl.value = `Error: ${e.message}`;
-    outputEl.className = 'is-error';
-    toast(e.message.slice(0, 80), 'err');
-  } finally {
-    btnEncode.disabled = false;
-    btnSwap.disabled = false;
-    // Only re-enable decode if it was enabled before
-    const op2 = OPS[activeOp];
-    btnDecode.disabled = !(op2?.symmetric || op2?.lookupType || op2?.decode);
-    updateStats();
-  }
+function debouncedRunChain() {
+  clearTimeout(runChainTimer);
+  runChainTimer = setTimeout(runChain, 300);
 }
 
-// ── Swap ──────────────────────────────────────────────────────
-btnSwap.addEventListener('click', () => {
-  const tmp = inputEl.value;
-  inputEl.value = outputEl.value;
-  outputEl.value = tmp;
-  if (outputEl.className === 'is-error') outputEl.className = '';
-  updateStats();
-});
+// ── Stats ─────────────────────────────────────────────────────
+function updateStats() {
+  const steps = chain.filter(s => s.op).length;
+  const ic = chainInput.value.length;
+  // Find last non-empty output
+  let oc = 0;
+  for (let i = chain.length - 1; i >= 0; i--) {
+    if (chain[i].outputEl.value && !chain[i].outputEl.classList.contains('is-loading')) {
+      oc = chain[i].outputEl.value.length;
+      break;
+    }
+  }
+  statsEl.textContent = `Chain: ${steps} step${steps !== 1 ? 's' : ''} · in: ${ic.toLocaleString()} chars · out: ${oc.toLocaleString()} chars`;
+}
 
-// ── Button wires ──────────────────────────────────────────────
-btnEncode.addEventListener('click', () => runDir('encode'));
-btnDecode.addEventListener('click', () => { if (!btnDecode.disabled) runDir('decode'); });
+// ── Reset chain ───────────────────────────────────────────────
+function resetChain() {
+  chain.forEach(s => s.node.remove());
+  chain = [];
+  focusedSlotIdx = 0;
+  chainInput.value = '';
+  addStep();
+  updateSummary();
+  updateStats();
+  savePrefs();
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type = '') {
+  clearTimeout(toastTimer);
+  toastEl.textContent = msg;
+  toastEl.className = 'visible' + (type ? ' ' + type : '');
+  toastTimer = setTimeout(() => { toastEl.className = ''; }, 2600);
+}
 
 // ── Sidebar op buttons ────────────────────────────────────────
 document.querySelectorAll('.op-btn[data-op]').forEach(btn => {
-  btn.addEventListener('click', () => setActiveOp(btn.dataset.op));
+  btn.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', btn.dataset.op);
+    e.dataTransfer.effectAllowed = 'copy';
+  });
+  btn.addEventListener('click', () => {
+    if (chain.length === 0) return;
+    setSlotOp(focusedSlotIdx, btn.dataset.op);
+  });
 });
 
 // ── Sidebar collapse ──────────────────────────────────────────
@@ -761,65 +1043,88 @@ document.querySelectorAll('.sb-section-header[data-sec]').forEach(hdr => {
   });
 });
 
-// ── Copy output ───────────────────────────────────────────────
+// ── Header buttons ────────────────────────────────────────────
 $('btn-copy-output').addEventListener('click', async () => {
-  const text = outputEl.value;
+  let text = '';
+  for (let i = chain.length - 1; i >= 0; i--) {
+    if (chain[i].outputEl.value && !chain[i].outputEl.className.includes('is-loading')) {
+      text = chain[i].outputEl.value; break;
+    }
+  }
   if (!text) { toast('Nothing to copy', 'warn'); return; }
   try {
     await navigator.clipboard.writeText(text);
     toast('Output copied', 'ok');
-  } catch(e) {
-    toast('Copy failed — check browser permissions', 'err');
-  }
+  } catch(e) { toast('Copy failed', 'err'); }
 });
 
-// ── Stats ─────────────────────────────────────────────────────
-function updateStats() {
-  const ic = inputEl.value.length, oc = outputEl.value.length;
-  const op = OPS[activeOp];
-  statsEl.textContent = `${op?.label || activeOp} · in: ${ic.toLocaleString()} chars · out: ${oc.toLocaleString()} chars`;
-}
+$('btn-reset').addEventListener('click', () => resetChain());
 
-inputEl.addEventListener('input', updateStats);
-
-// ── Toast ─────────────────────────────────────────────────────
-let toastTimer;
-function toast(msg, type = '') {
-  clearTimeout(toastTimer);
-  toastEl.textContent = msg;
-  toastEl.className = 'visible' + (type ? ' ' + type : '');
-  toastTimer = setTimeout(() => { toastEl.className = ''; }, 2600);
-}
+// ── Input events ──────────────────────────────────────────────
+chainInput.addEventListener('input', () => {
+  updateStats();
+  debouncedRunChain();
+});
 
 // ── Persistence ───────────────────────────────────────────────
 const SECTIONS = ['encoding','hashing','bases','transforms'];
 
 function savePrefs() {
   try {
-    const p = { activeOp };
+    const p = {
+      chainOps: chain.map(s => s.op),
+      chainInput: chainInput.value,
+    };
     SECTIONS.forEach(s => { p['sec_'+s] = $('body-'+s).classList.contains('open'); });
     localStorage.setItem('transcode_prefs', JSON.stringify(p));
   } catch(e) {}
 }
 
-function loadPrefs() {
+async function loadPrefs() {
   try {
     const p = JSON.parse(localStorage.getItem('transcode_prefs') || '{}');
-    if (p.activeOp && OPS[p.activeOp]) setActiveOp(p.activeOp);
+
+    // Restore section collapse
     SECTIONS.forEach(s => {
       if (p['sec_'+s] === false) {
         $('body-'+s).classList.remove('open');
-        const hdr = $('sec-'+s).querySelector('.sb-chevron');
-        if (hdr) hdr.classList.remove('open');
+        const sec = $('sec-'+s);
+        if (sec) { const chev = sec.querySelector('.sb-chevron'); if (chev) chev.classList.remove('open'); }
       }
     });
+
+    // Restore input
+    if (p.chainInput) chainInput.value = p.chainInput;
+
+    // Restore chain ops (at least 1 step already exists from init addStep())
+    if (Array.isArray(p.chainOps) && p.chainOps.length > 0) {
+      // Set op for first step
+      if (p.chainOps[0] && OPS[p.chainOps[0]]) {
+        chain[0].op = p.chainOps[0];
+        renderSlot(0);
+      }
+      // Add and fill remaining steps
+      for (let i = 1; i < Math.min(p.chainOps.length, 100); i++) {
+        addStep();
+        if (p.chainOps[i] && OPS[p.chainOps[i]]) {
+          chain[i].op = p.chainOps[i];
+          renderSlot(i);
+        }
+      }
+      // Focus first empty slot
+      const firstEmpty = chain.findIndex(s => !s.op);
+      focusSlot(firstEmpty !== -1 ? firstEmpty : chain.length - 1);
+      updateSummary();
+      updateAddButtons();
+      if (chainInput.value) await runChain();
+    }
   } catch(e) {}
+  updateStats();
 }
 
 // ── Init ──────────────────────────────────────────────────────
+addStep(); // create initial step
 loadPrefs();
-if (!localStorage.getItem('transcode_prefs')) setActiveOp('base64');
-updateStats();
 </script>
 </body>
 </html>
