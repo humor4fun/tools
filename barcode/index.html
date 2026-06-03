@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barcode Generator · tools.bluejar.org</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--bg-sidebar:#161b27;--bg-input:#1c2232;--bg-hover:#1f2637;--bg-active:#243047;
+  --border:#2a3448;--border-light:#1e2a3d;
+  --accent:#1f6feb;--accent-h:#388bfd;
+  --text:#c9d1d9;--text-dim:#6e7681;--text-heading:#e6edf3;
+  --font-mono:'JetBrains Mono','Fira Mono','Cascadia Code',monospace;
+  --font-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --hdr:44px;--sw:290px;--stbar:28px;--r:6px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-ui);font-size:13px}
+
+#app{display:grid;grid-template-columns:var(--sw) 1fr;grid-template-rows:var(--hdr) 1fr var(--stbar);height:100vh}
+
+/* header */
+header{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:0 16px;
+  background:var(--bg-sidebar);border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:13px}
+#hdr-logo{text-decoration:none;color:var(--text-heading);font-weight:600;display:flex;align-items:center;gap:6px}
+.hdr-sep{color:var(--border);font-size:16px}
+#hdr-title{color:var(--text-heading);font-weight:600}
+#hdr-space{flex:1}
+#hdr-gh{display:flex;align-items:center;gap:5px;color:var(--text-dim);text-decoration:none;
+  font-size:12px;padding:4px 8px;border-radius:var(--r);border:1px solid var(--border)}
+#hdr-gh:hover{color:var(--text);border-color:var(--accent)}
+
+/* sidebar */
+aside{background:var(--bg-sidebar);border-right:1px solid var(--border);overflow-y:auto;overflow-x:hidden}
+
+/* main */
+main{display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;background:var(--bg)}
+
+/* status bar */
+#stbar{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:0 12px;
+  background:var(--bg-sidebar);border-top:1px solid var(--border);font-size:11px;
+  color:var(--text-dim);font-family:var(--font-mono)}
+.st-sep{opacity:.3}
+
+/* preview */
+#preview-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:100%}
+#preview-canvas{max-width:100%;max-height:calc(100vh - var(--hdr) - var(--stbar) - 48px);
+  object-fit:contain;border-radius:var(--r);box-shadow:0 4px 24px rgba(0,0,0,.5);image-rendering:pixelated}
+#preview-err{color:#f87171;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);
+  border-radius:var(--r);padding:10px 16px;font-size:12px;max-width:520px;text-align:center;display:none}
+
+/* sidebar sections */
+.sb-sec{border-bottom:1px solid var(--border-light)}
+.sb-hdr{display:flex;align-items:center;gap:6px;padding:10px 14px;cursor:pointer;user-select:none;
+  font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-dim)}
+.sb-hdr:hover{color:var(--text);background:var(--bg-hover)}
+.chevron{margin-left:auto;transition:transform .15s}
+.sb-sec.collapsed .chevron{transform:rotate(-90deg)}
+.sb-body{padding:10px 14px 12px;display:flex;flex-direction:column;gap:10px}
+.sb-sec.collapsed .sb-body{display:none}
+
+/* controls */
+.clabel{font-size:11px;color:var(--text-dim);margin-bottom:3px;display:block}
+.crow{display:flex;flex-direction:column;gap:3px}
+
+/* pills */
+.pills{display:flex;gap:4px;flex-wrap:wrap}
+.pill{padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--bg-input);
+  color:var(--text-dim);font-size:11px;cursor:pointer;transition:all .1s;font-family:var(--font-mono)}
+.pill:hover{border-color:var(--accent);color:var(--text)}
+.pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* inputs */
+input[type=text],input[type=number]{width:100%;background:var(--bg-input);border:1px solid var(--border);
+  border-radius:var(--r);color:var(--text);padding:6px 8px;font-size:12px;font-family:var(--font-mono);outline:none}
+input[type=text]:focus,input[type=number]:focus{border-color:var(--accent)}
+input.err{border-color:#f87171!important}
+
+/* color swatch */
+.color-row{display:flex;align-items:center;gap:8px}
+.swatch{width:28px;height:28px;border-radius:var(--r);border:2px solid var(--border);cursor:pointer;overflow:hidden;flex-shrink:0}
+.swatch input[type=color]{width:42px;height:42px;margin:-7px;cursor:pointer;border:none;outline:none}
+.cval{flex:1;font-family:var(--font-mono);font-size:11px}
+
+/* slider */
+.srow{display:flex;align-items:center;gap:8px}
+input[type=range]{flex:1;-webkit-appearance:none;height:4px;border-radius:2px;background:var(--border);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer}
+.sval{font-size:11px;font-family:var(--font-mono);color:var(--text-dim);min-width:36px;text-align:right}
+
+/* toggle */
+.trow{display:flex;align-items:center;gap:8px}
+.tog{position:relative;width:32px;height:18px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0;position:absolute}
+.tog-track{position:absolute;inset:0;background:var(--border);border-radius:9px;cursor:pointer;transition:background .15s}
+.tog input:checked+.tog-track{background:var(--accent)}
+.tog-thumb{position:absolute;top:3px;left:3px;width:12px;height:12px;background:#fff;border-radius:50%;pointer-events:none;transition:transform .15s}
+.tog input:checked~.tog-thumb{transform:translateX(14px)}
+.tog-lbl{font-size:12px;color:var(--text);cursor:pointer}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--r);
+  border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:12px;
+  cursor:pointer;transition:all .1s;font-family:var(--font-ui)}
+.btn:hover{background:var(--bg-hover);border-color:var(--accent-h)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-h)}
+.btn-row{display:flex;gap:6px;flex-wrap:wrap}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+#btn-swap{padding:6px 10px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg-input);
+  cursor:pointer;color:var(--text-dim);font-size:11px;transition:all .1s}
+#btn-swap:hover{color:var(--text);border-color:var(--accent)}
+
+/* misc */
+.hint{font-size:11px;color:var(--text-dim)}
+.errhint{font-size:11px;color:#f87171}
+.check-row{display:flex;align-items:center;gap:6px;cursor:pointer}
+.check-row input[type=checkbox]{accent-color:var(--accent);width:13px;height:13px;cursor:pointer}
+.check-lbl{font-size:12px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<header>
+  <a id="hdr-logo" href="/">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="1" y="1" width="6" height="6" rx="1" fill="#58a6ff" opacity=".8"/>
+      <rect x="9" y="1" width="6" height="6" rx="1" fill="#58a6ff" opacity=".5"/>
+      <rect x="1" y="9" width="6" height="6" rx="1" fill="#58a6ff" opacity=".5"/>
+      <rect x="9" y="9" width="6" height="6" rx="1" fill="#58a6ff" opacity=".3"/>
+    </svg>
+    tools
+  </a>
+  <span class="hdr-sep">/</span>
+  <span id="hdr-title">barcode</span>
+  <div id="hdr-space"></div>
+  <a id="hdr-gh" href="https://github.com/humor4fun/tools" target="_blank">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    GitHub
+  </a>
+</header>
+
+<aside id="sidebar">
+
+  <!-- TYPE -->
+  <div class="sb-sec" id="sec-type">
+    <div class="sb-hdr" data-sec="type">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M0 0h3v16H0zm4 0h1v16H4zm2 0h2v16H6zm3 0h1v16H9zm2 0h2v16h-2zm3 0h1v16h-1z"/></svg>
+      Type
+      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+    </div>
+    <div class="sb-body">
+      <div class="pills" id="type-pills">
+        <button class="pill active" data-type="code128">Code 128</button>
+        <button class="pill" data-type="ean13">EAN-13</button>
+        <button class="pill" data-type="upca">UPC-A</button>
+        <button class="pill" data-type="code39">Code 39</button>
+        <button class="pill" data-type="itf">ITF</button>
+      </div>
+      <div class="hint" id="type-hint">Full ASCII (32–127) · auto-selects B/C subset</div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="sb-sec" id="sec-content">
+    <div class="sb-hdr" data-sec="content">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M14 1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/><path d="M3 4.5h10v1H3zm0 2h10v1H3zm0 2h6v1H3z"/></svg>
+      Content
+      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+    </div>
+    <div class="sb-body">
+      <div class="crow">
+        <input type="text" id="content-inp" value="Hello World 123" autocomplete="off" spellcheck="false">
+        <div class="hint" id="content-hint"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLORS -->
+  <div class="sb-sec" id="sec-colors">
+    <div class="sb-hdr" data-sec="colors">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm4 3a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM5.5 9a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm.5 6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm5-1.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/></svg>
+      Colors
+      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+    </div>
+    <div class="sb-body">
+      <div class="crow">
+        <label class="clabel">Foreground (bars)</label>
+        <div class="color-row">
+          <div class="swatch"><input type="color" id="fg-color" value="#000000"></div>
+          <input type="text" id="fg-hex" value="#000000" class="cval">
+        </div>
+      </div>
+      <div class="crow">
+        <label class="clabel">Background</label>
+        <div class="color-row">
+          <div class="swatch" style="background:repeating-conic-gradient(#555 0% 25%,#333 0% 50%) 0 0/8px 8px">
+            <input type="color" id="bg-color" value="#ffffff">
+          </div>
+          <input type="text" id="bg-hex" value="#ffffff" class="cval">
+          <label class="check-row" title="Transparent background (PNG only)">
+            <input type="checkbox" id="bg-transparent">
+            <span class="check-lbl" style="font-family:var(--font-mono);font-size:11px">α</span>
+          </label>
+        </div>
+      </div>
+      <button id="btn-swap">⇅ Swap colors</button>
+    </div>
+  </div>
+
+  <!-- BARS -->
+  <div class="sb-sec" id="sec-bars">
+    <div class="sb-hdr" data-sec="bars">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M0 0h2v16H0zm3 0h1v16H3zm2 0h2v16H5zm3 0h1v16H8zm2 0h2v16h-2zm3 0h1v16h-1z"/></svg>
+      Bars
+      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+    </div>
+    <div class="sb-body">
+      <div class="crow">
+        <label class="clabel">Bar width multiplier</label>
+        <div class="srow">
+          <input type="range" id="bar-width" min="1" max="5" value="2" step="0.5">
+          <span class="sval" id="bw-val">2×</span>
+        </div>
+      </div>
+      <div class="crow">
+        <label class="clabel">Bar height (px)</label>
+        <div class="srow">
+          <input type="range" id="bar-height" min="20" max="300" value="100">
+          <span class="sval" id="bh-val">100</span>
+        </div>
+      </div>
+      <div class="crow">
+        <label class="clabel">Quiet zone (modules)</label>
+        <div class="srow">
+          <input type="range" id="quiet-zone" min="0" max="20" value="10">
+          <span class="sval" id="qz-val">10</span>
+        </div>
+      </div>
+      <div class="crow">
+        <div class="trow">
+          <label class="tog"><input type="checkbox" id="rounded"><div class="tog-track"></div><div class="tog-thumb"></div></label>
+          <span class="tog-lbl">Rounded image corners</span>
+        </div>
+      </div>
+      <div class="crow" id="radius-row" style="display:none">
+        <label class="clabel">Corner radius</label>
+        <div class="srow">
+          <input type="range" id="corner-r" min="2" max="40" value="16">
+          <span class="sval" id="cr-val">16px</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEXT LABEL -->
+  <div class="sb-sec" id="sec-text">
+    <div class="sb-hdr" data-sec="text">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 0A1.5 1.5 0 0 0 0 1.5v2A1.5 1.5 0 0 0 1.5 5h5v8.5A1.5 1.5 0 0 0 8 15a1.5 1.5 0 0 0 1.5-1.5V5h5A1.5 1.5 0 0 0 16 3.5v-2A1.5 1.5 0 0 0 14.5 0h-13z"/></svg>
+      Text Label
+      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+    </div>
+    <div class="sb-body">
+      <div class="crow">
+        <div class="trow">
+          <label class="tog"><input type="checkbox" id="show-text" checked><div class="tog-track"></div><div class="tog-thumb"></div></label>
+          <span class="tog-lbl">Show human-readable text</span>
+        </div>
+      </div>
+      <div id="text-opts">
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
+          <div class="crow" id="text-pos-row">
+            <label class="clabel">Position</label>
+            <div class="pills" id="pos-pills">
+              <button class="pill" data-pos="above">Above</button>
+              <button class="pill active" data-pos="below">Below</button>
+            </div>
+          </div>
+          <div class="crow">
+            <label class="clabel">Font</label>
+            <div class="pills" id="font-pills">
+              <button class="pill active" data-font="monospace">Mono</button>
+              <button class="pill" data-font="sans-serif">Sans</button>
+              <button class="pill" data-font="serif">Serif</button>
+            </div>
+          </div>
+          <div class="crow">
+            <label class="clabel">Font size</label>
+            <div class="srow">
+              <input type="range" id="font-size" min="8" max="32" value="14">
+              <span class="sval" id="fs-val">14px</span>
+            </div>
+          </div>
+          <div class="crow">
+            <label class="clabel">Gap between bars and text</label>
+            <div class="srow">
+              <input type="range" id="text-gap" min="0" max="20" value="6">
+              <span class="sval" id="tg-val">6px</span>
+            </div>
+          </div>
+          <div class="crow">
+            <div class="trow">
+              <label class="tog"><input type="checkbox" id="custom-tc"><div class="tog-track"></div><div class="tog-thumb"></div></label>
+              <span class="tog-lbl">Custom text color</span>
+            </div>
+          </div>
+          <div class="crow" id="tc-row" style="display:none">
+            <label class="clabel">Text color</label>
+            <div class="color-row">
+              <div class="swatch"><input type="color" id="tc-color" value="#000000"></div>
+              <input type="text" id="tc-hex" value="#000000" class="cval">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIZE -->
+  <div class="sb-sec" id="sec-size">
+    <div class="sb-hdr" data-sec="size">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5 1a2 2 0 0 0-2 2v1h10V3a2 2 0 0 0-2-2H5zm6 8H5a2 2 0 0 0-2 2v1h10v-1a2 2 0 0 0-2-2zM3 11h10v1H3zm0-8h10v1H3z"/></svg>
+      Size
+      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+    </div>
+    <div class="sb-body">
+      <div class="crow">
+        <label class="clabel">Output width (px)</label>
+        <div class="srow">
+          <input type="range" id="out-width" min="200" max="2000" value="600" step="50">
+          <span class="sval" id="ow-val">600</span>
+        </div>
+      </div>
+      <div class="hint">Height computed from bar height + text + quiet zone</div>
+    </div>
+  </div>
+
+  <!-- EXPORT -->
+  <div class="sb-sec" id="sec-export">
+    <div class="sb-hdr" data-sec="export">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+      Export
+      <span class="chevron"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 6l3.5 4 3.5-4z"/></svg></span>
+    </div>
+    <div class="sb-body">
+      <div class="btn-row">
+        <button class="btn primary" id="btn-png">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+          PNG
+        </button>
+        <button class="btn" id="btn-svg">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+          SVG
+        </button>
+        <button class="btn" id="btn-copy">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5H4.5v1A1.5 1.5 0 0 0 6 4h4a1.5 1.5 0 0 0 1.5-1.5v-1H11A1.5 1.5 0 0 0 9.5 0h-3z"/></svg>
+          Copy
+        </button>
+      </div>
+      <div id="copy-msg" class="hint" style="display:none">Copied!</div>
+    </div>
+  </div>
+
+</aside>
+
+<main>
+  <div id="preview-wrap">
+    <canvas id="preview-canvas"></canvas>
+    <div id="preview-err"></div>
+  </div>
+</main>
+
+<div id="stbar">
+  <span id="st-dims">—</span>
+  <span class="st-sep">·</span>
+  <span id="st-type">—</span>
+  <span class="st-sep">·</span>
+  <span id="st-info">—</span>
+</div>
+
+</div><!-- #app -->
+<script>
+'use strict';
+
+// ─── Code 128 BARS ──────────────────────────────────────────────────────────
+// 107 entries (indices 0-106). Each is a number whose decimal string
+// is the binary module pattern (1=bar, 0=space).
+// Source: ISO/IEC 15417, verified via JsBarcode open-source constants.
+const C128_BARS = [
+  11011001100,11001101100,11001100110,10010011000,10010001100,
+  10001001100,10011001000,10011000100,10001100100,11001001000,
+  11001000100,11000100100,10110011100,10011011100,10011001110,
+  10111001100,10011101100,10011100110,11001110010,11001011100,
+  11001001110,11011100100,11001110100,11101101110,11101001100,
+  11100101100,11100100110,11101100100,11100110100,11100110010,
+  11011011000,11011000110,11000110110,10100011000,10001011000,
+  10001000110,10110001000,10001101000,10001100010,11010001000,
+  11000101000,11000100010,10110111000,10110001110,10001101110,
+  10111011000,10111000110,10001110110,11101110110,11010001110,
+  11000101110,11011101000,11011100010,11011101110,11101011000,
+  11101000110,11100010110,11101101000,11101100010,11100011010,
+  11101111010,11001000010,11110001010,10100110000,10100001100,
+  10010110000,10010000110,10000101100,10000100110,10110010000,
+  10110000100,10011010000,10011000010,10000110100,10000110010,
+  11000010010,11001010000,11110111010,11000010100,10001111010,
+  10100111100,10010111100,10010011110,10111100100,10011110100,
+  10011110010,11110100100,11110010100,11110010010,11011011110,
+  11011110110,11110110110,10101111000,10100011110,10001011110,
+  10111101000,10111100010,11110101000,11110100010,10111011110,
+  10111101110,11101011110,11110101110,11010000100,11010010000,
+  11010011100, // 105 = START C
+  1100011101011 // 106 = STOP (13 modules)
+];
+const C128_SA=103,C128_SB=104,C128_SC=105,C128_STOP=106;
+
+// ─── Code 39 ────────────────────────────────────────────────────────────────
+// 9-bit pattern: positions 0,2,4,6,8 = bars; 1,3,5,7 = spaces. '1'=wide,'0'=narrow.
+const C39={
+  '0':'000110100','1':'100100001','2':'001100001','3':'101100000','4':'000110001',
+  '5':'100110000','6':'001110000','7':'000100101','8':'100100100','9':'001100100',
+  'A':'100001001','B':'001001001','C':'101001000','D':'000011001','E':'100011000',
+  'F':'001011000','G':'000001101','H':'100001100','I':'001001100','J':'000011100',
+  'K':'100000011','L':'001000011','M':'101000010','N':'000010011','O':'100010010',
+  'P':'001010010','Q':'000000111','R':'100000110','S':'001000110','T':'000010110',
+  'U':'110000001','V':'011000001','W':'111000000','X':'010010001','Y':'110010000',
+  'Z':'011010000','-':'010000101','.':'110000100',' ':'011000100',
+  '$':'010101000','/':'010100010','+':'010001010','%':'000101010','*':'010010100'
+};
+
+// ─── ITF digits ─────────────────────────────────────────────────────────────
+// 5-bit pattern: '1'=wide, '0'=narrow. 2 wides per digit.
+const ITF={'0':'00110','1':'10001','2':'01001','3':'11000','4':'00101',
+           '5':'10100','6':'01100','7':'00011','8':'10010','9':'01010'};
+
+// ─── EAN-13 / UPC-A ─────────────────────────────────────────────────────────
+const EAN_L=['0001101','0011001','0010011','0111101','0100011','0110001','0101111','0111011','0110111','0001011'];
+const EAN_G=['0100111','0110011','0011011','0100001','0011101','0111001','0000101','0010001','0001001','0010111'];
+const EAN_R=['1110010','1100110','1101100','1000010','1011100','1001110','1010000','1000100','1001000','1110100'];
+// Parity for first digit (0=L-code, 1=G-code)
+const EAN_PAR=['000000','001011','001101','001110','010011','011001','011100','010101','010110','011010'];
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ENCODERS — all return { mods:[{w,bar},...], meta:{...} }
+// ═══════════════════════════════════════════════════════════════════════════
+
+function c128push(mods, code) {
+  if (C128_BARS[code] === undefined) throw new Error('Bad C128 code: '+code);
+  const s = C128_BARS[code].toString();
+  for (const b of s) mods.push({w:1, bar:b==='1'});
+}
+
+function encodeCode128(text) {
+  if (!text) throw new Error('Enter content to encode');
+  const mods = [];
+  const allDig = /^\d+$/.test(text);
+  let start, codes=[];
+
+  if (allDig && text.length>=2 && text.length%2===0) {
+    start=C128_SC;
+    for (let i=0;i<text.length;i+=2) codes.push(parseInt(text.slice(i,i+2),10));
+  } else {
+    start=C128_SB;
+    for (const ch of text) {
+      const c=ch.charCodeAt(0)-32;
+      if (c<0||c>95) throw new Error(`Character "${ch}" not encodable in Code 128 (ASCII 32–127 only)`);
+      codes.push(c);
+    }
+  }
+
+  let chk=start;
+  for (let i=0;i<codes.length;i++) chk+=(i+1)*codes[i];
+  chk=chk%103;
+
+  c128push(mods,start);
+  for (const c of codes) c128push(mods,c);
+  c128push(mods,chk);
+  c128push(mods,C128_STOP);
+
+  return {mods, meta:{type:'code128', text}};
+}
+
+function encodeCode39(text) {
+  if (!text) throw new Error('Enter content to encode');
+  const up=text.toUpperCase();
+  for (const ch of up) if (!C39[ch]) throw new Error(`"${ch}" not valid in Code 39 — allowed: A-Z 0-9 - . $ / + % space`);
+  const mods=[];
+  const chars=['*',...up.split(''),'*'];
+  for (let ci=0;ci<chars.length;ci++) {
+    const p=C39[chars[ci]];
+    for (let i=0;i<9;i++) mods.push({w:p[i]==='1'?3:1, bar:i%2===0});
+    if (ci<chars.length-1) mods.push({w:1,bar:false}); // interchar gap
+  }
+  return {mods, meta:{type:'code39', text:up}};
+}
+
+function encodeITF(text) {
+  if (!text) throw new Error('Enter digits to encode');
+  if (!/^\d+$/.test(text)) throw new Error('ITF requires digits only');
+  if (text.length%2!==0) throw new Error('ITF requires an even number of digits');
+  const mods=[];
+  // start guard: BNBN (4 narrow)
+  mods.push({w:1,bar:true},{w:1,bar:false},{w:1,bar:true},{w:1,bar:false});
+  for (let i=0;i<text.length;i+=2) {
+    const bp=ITF[text[i]]; const sp=ITF[text[i+1]];
+    for (let j=0;j<5;j++) {
+      mods.push({w:bp[j]==='1'?3:1,bar:true});
+      mods.push({w:sp[j]==='1'?3:1,bar:false});
+    }
+  }
+  // stop guard: wide bar, narrow space, narrow bar
+  mods.push({w:3,bar:true},{w:1,bar:false},{w:1,bar:true});
+  return {mods, meta:{type:'itf', text}};
+}
+
+function ean13check(d12) {
+  let s=0;
+  for (let i=0;i<12;i++) s+=parseInt(d12[i],10)*(i%2===0?1:3);
+  return (10-s%10)%10;
+}
+
+// Returns {mods, meta} where meta includes layout x-positions for standard display
+function encodeEAN13(text, isUPCA=false) {
+  const raw=text.replace(/\D/g,'');
+  const inputLen=isUPCA?11:12;
+  const totalLen=isUPCA?12:13;
+  if (raw.length!==inputLen && raw.length!==totalLen)
+    throw new Error(`${isUPCA?'UPC-A':'EAN-13'} requires ${inputLen} digits (check digit auto-computed)`);
+
+  const base = isUPCA ? '0'+raw.slice(0,11) : raw.slice(0,12);
+  const chk = ean13check(base);
+  if (raw.length===totalLen) {
+    const givenChk=parseInt(raw[totalLen-1],10);
+    if (givenChk!==chk) throw new Error(`Check digit should be ${chk}, got ${givenChk}`);
+  }
+
+  const all = base+chk; // 13 digits for EAN-13
+  const first=parseInt(all[0],10);
+  const par=EAN_PAR[first];
+
+  const mods=[];
+  let x=0; // track module positions for text layout
+  const layout={};
+
+  // left guard 101
+  mods.push({w:1,bar:true},{w:1,bar:false},{w:1,bar:true}); x+=3;
+  mods[mods.length-3].guard=true; mods[mods.length-2].guard=true; mods[mods.length-1].guard=true;
+  layout.leftDataStart=x;
+
+  // left 6 digits
+  for (let i=0;i<6;i++) {
+    const d=parseInt(all[i+1],10);
+    const code=par[i]==='0'?EAN_L[d]:EAN_G[d];
+    for (const b of code) { mods.push({w:1,bar:b==='1'}); x++; }
+  }
+  layout.leftDataEnd=x;
+
+  // center guard 01010
+  [{bar:false},{bar:true},{bar:false},{bar:true},{bar:false}].forEach(m=>{
+    mods.push({...m,w:1,guard:true}); x++;
+  });
+  layout.rightDataStart=x;
+
+  // right 6 digits
+  for (let i=0;i<6;i++) {
+    const d=parseInt(all[i+7],10);
+    const code=EAN_R[d];
+    for (const b of code) { mods.push({w:1,bar:b==='1'}); x++; }
+  }
+  layout.rightDataEnd=x;
+
+  // right guard 101
+  [{bar:true},{bar:false},{bar:true}].forEach(m=>{ mods.push({...m,w:1,guard:true}); x++; });
+
+  const displayAll = isUPCA ? all.slice(1) : all; // UPC-A shows 12 digits
+  const firstChar = isUPCA ? all[1] : all[0];
+  const lastChar  = isUPCA ? all[12] : null;
+  const midLeft   = isUPCA ? all.slice(2,7) : all.slice(1,7);
+  const midRight  = isUPCA ? all.slice(7,12) : all.slice(7,13);
+
+  return {mods, meta:{
+    type: isUPCA?'upca':'ean13',
+    all, displayAll, firstChar, lastChar, midLeft, midRight,
+    checkDigit: chk, layout, isUPCA
+  }};
+}
+
+function encodeUPCA(text) { return encodeEAN13(text, true); }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  RENDERER
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getOpts() {
+  return {
+    fg:         fgColor.value,
+    bg:         bgColor.value,
+    transparent: bgTransp.checked,
+    barWidth:   parseFloat(barWidthEl.value),
+    barHeight:  parseInt(barHeightEl.value),
+    quietZone:  parseInt(quietZoneEl.value),
+    rounded:    roundedEl.checked,
+    cornerR:    parseInt(cornerREl.value),
+    showText:   showTextEl.checked,
+    textPos:    curTextPos,
+    fontFamily: curFont,
+    fontSize:   parseInt(fontSizeEl.value),
+    textGap:    parseInt(textGapEl.value),
+    textColor:  customTcEl.checked ? tcColorEl.value : fgColor.value,
+    outWidth:   parseInt(outWidthEl.value),
+  };
+}
+
+function renderToCanvas(canvas, mods, meta, opts) {
+  const sc=opts.barWidth, barH=opts.barHeight;
+  const qz=opts.quietZone*sc;
+  const fs=opts.fontSize, tg=opts.textGap;
+  const showT=opts.showText;
+  const above=opts.textPos==='above';
+  const isEAN=(meta.type==='ean13'||meta.type==='upca');
+
+  // Total module width
+  const totalW=mods.reduce((s,m)=>s+m.w,0)*sc;
+
+  // For EAN/UPC: guard bars extend 5px below data bars
+  const guardExt = isEAN&&showT ? Math.round(fs*0.4+tg) : (isEAN ? 6 : 0);
+  const effectiveBarH = barH + (isEAN ? guardExt : 0);
+
+  // Height calculation
+  const textH = showT ? (fs+tg) : 0;
+  const canvasW = totalW + 2*qz + (isEAN ? 2*qz : 0); // extra left qz for first digit
+  const extraLeft = isEAN ? qz : 0;
+  const canvasH = effectiveBarH + 2*qz + textH;
+
+  canvas.width  = Math.round(canvasW);
+  canvas.height = Math.round(canvasH);
+
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  if (!opts.transparent) {
+    ctx.fillStyle=opts.bg;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+
+  const barTop = qz + (showT&&above ? textH : 0);
+
+  // Draw bars
+  let cx=qz+extraLeft;
+  for (const {w,bar,guard} of mods) {
+    const pw=w*sc;
+    if (bar) {
+      ctx.fillStyle=opts.fg;
+      if (isEAN&&guard) {
+        ctx.fillRect(cx, barTop, pw, barH+guardExt);
+      } else {
+        ctx.fillRect(cx, barTop, pw, barH);
+      }
+    }
+    cx+=pw;
+  }
+
+  // Text label
+  if (showT) {
+    ctx.fillStyle=opts.textColor;
+    ctx.font=`${fs}px ${opts.fontFamily}`;
+    ctx.textBaseline='top';
+
+    if (isEAN) {
+      const {layout,firstChar,lastChar,midLeft,midRight,isUPCA}=meta;
+      const textY = above ? qz : barTop+barH+guardExt+tg;
+
+      // first digit (left of left guard)
+      ctx.textAlign='center';
+      ctx.fillText(firstChar, qz/2+extraLeft/2, barTop+barH/2-fs/2);
+
+      // mid-left digits (centered in left data section)
+      const lx1=(qz+extraLeft+layout.leftDataStart*sc);
+      const lx2=(qz+extraLeft+layout.leftDataEnd*sc);
+      ctx.textAlign='center';
+      ctx.fillText(midLeft, (lx1+lx2)/2, textY);
+
+      // mid-right digits
+      const rx1=(qz+extraLeft+layout.rightDataStart*sc);
+      const rx2=(qz+extraLeft+layout.rightDataEnd*sc);
+      ctx.fillText(midRight, (rx1+rx2)/2, textY);
+
+      // last digit for UPC-A (right of right guard)
+      if (isUPCA&&lastChar) {
+        ctx.textAlign='left';
+        ctx.fillText(lastChar, rx2+4, barTop+barH/2-fs/2);
+      }
+    } else {
+      const textY = above ? qz : barTop+barH+tg;
+      ctx.textAlign='center';
+      ctx.fillText(meta.text||'', canvas.width/2, textY);
+    }
+  }
+
+  // Rounded corner clip
+  if (opts.rounded && opts.cornerR>0) {
+    applyRoundClip(canvas, opts.cornerR);
+  }
+}
+
+function applyRoundClip(canvas, r) {
+  const ctx=canvas.getContext('2d');
+  const w=canvas.width, h=canvas.height;
+  r=Math.min(r,w/2,h/2);
+  const img=ctx.getImageData(0,0,w,h);
+  const d=img.data;
+  for (let py=0;py<h;py++) {
+    for (let px=0;px<w;px++) {
+      let inside=true;
+      if (px<r&&py<r&&Math.hypot(px-r,py-r)>r) inside=false;
+      else if (px>w-r&&py<r&&Math.hypot(px-(w-r),py-r)>r) inside=false;
+      else if (px<r&&py>h-r&&Math.hypot(px-r,py-(h-r))>r) inside=false;
+      else if (px>w-r&&py>h-r&&Math.hypot(px-(w-r),py-(h-r))>r) inside=false;
+      if (!inside) d[(py*w+px)*4+3]=0;
+    }
+  }
+  ctx.putImageData(img,0,0);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SVG EXPORT
+// ═══════════════════════════════════════════════════════════════════════════
+
+function generateSVG(mods, meta, opts) {
+  const sc=opts.barWidth, barH=opts.barHeight;
+  const qz=opts.quietZone*sc;
+  const fs=opts.fontSize, tg=opts.textGap;
+  const showT=opts.showText, above=opts.textPos==='above';
+  const isEAN=(meta.type==='ean13'||meta.type==='upca');
+
+  const totalW=mods.reduce((s,m)=>s+m.w,0)*sc;
+  const guardExt=isEAN&&showT?Math.round(fs*0.4+tg):(isEAN?6:0);
+  const effectiveBarH=barH+(isEAN?guardExt:0);
+  const textH=showT?(fs+tg):0;
+  const extraLeft=isEAN?qz:0;
+  const cW=Math.round(totalW+2*qz+extraLeft);
+  const cH=Math.round(effectiveBarH+2*qz+textH);
+  const barTop=qz+(showT&&above?textH:0);
+
+  let rects='', texts='';
+  let cx=qz+extraLeft;
+  for (const {w,bar,guard} of mods) {
+    const pw=w*sc;
+    if (bar) {
+      const h2=isEAN&&guard?barH+guardExt:barH;
+      rects+=`<rect x="${cx}" y="${barTop}" width="${pw}" height="${h2}"/>`;
+    }
+    cx+=pw;
+  }
+
+  if (showT) {
+    const ff=opts.fontFamily;
+    const tc=opts.textColor;
+    if (isEAN) {
+      const {layout,firstChar,lastChar,midLeft,midRight,isUPCA}=meta;
+      const textY=above?qz:barTop+barH+guardExt+tg;
+      const lx1=qz+extraLeft+layout.leftDataStart*sc;
+      const lx2=qz+extraLeft+layout.leftDataEnd*sc;
+      const rx1=qz+extraLeft+layout.rightDataStart*sc;
+      const rx2=qz+extraLeft+layout.rightDataEnd*sc;
+      texts+=`<text x="${(qz/2+extraLeft/2).toFixed(1)}" y="${(barTop+barH/2+fs/2).toFixed(1)}" text-anchor="middle" font-family="${ff}" font-size="${fs}" fill="${tc}">${firstChar}</text>`;
+      texts+=`<text x="${((lx1+lx2)/2).toFixed(1)}" y="${(textY+fs).toFixed(1)}" text-anchor="middle" font-family="${ff}" font-size="${fs}" fill="${tc}">${midLeft}</text>`;
+      texts+=`<text x="${((rx1+rx2)/2).toFixed(1)}" y="${(textY+fs).toFixed(1)}" text-anchor="middle" font-family="${ff}" font-size="${fs}" fill="${tc}">${midRight}</text>`;
+      if (isUPCA&&lastChar) texts+=`<text x="${(rx2+4).toFixed(1)}" y="${(barTop+barH/2+fs/2).toFixed(1)}" font-family="${ff}" font-size="${fs}" fill="${tc}">${lastChar}</text>`;
+    } else {
+      const textY=above?qz:barTop+barH+tg;
+      texts+=`<text x="${(cW/2).toFixed(1)}" y="${(textY+fs).toFixed(1)}" text-anchor="middle" font-family="${ff}" font-size="${fs}" fill="${tc}">${escapeXML(meta.text||'')}</text>`;
+    }
+  }
+
+  const bg=opts.transparent?'':`<rect width="${cW}" height="${cH}" fill="${opts.bg}"/>`;
+  const bars=`<g fill="${opts.fg}">${rects}</g>`;
+
+  if (opts.rounded&&opts.cornerR>0) {
+    const r=opts.cornerR;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${cW}" height="${cH}" viewBox="0 0 ${cW} ${cH}"><defs><clipPath id="rc"><rect width="${cW}" height="${cH}" rx="${r}" ry="${r}"/></clipPath></defs><g clip-path="url(#rc)">${bg}${bars}${texts}</g></svg>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${cW}" height="${cH}" viewBox="0 0 ${cW} ${cH}">${bg}${bars}${texts}</svg>`;
+}
+
+function escapeXML(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ENCODE + RENDER
+// ═══════════════════════════════════════════════════════════════════════════
+
+let lastMods=null, lastMeta=null;
+
+function encodeAndRender() {
+  const text=contentInp.value;
+  const opts=getOpts();
+  let result;
+
+  try {
+    switch(curType) {
+      case 'code128': result=encodeCode128(text); break;
+      case 'code39':  result=encodeCode39(text);  break;
+      case 'itf':     result=encodeITF(text);     break;
+      case 'ean13':   result=encodeEAN13(text);   break;
+      case 'upca':    result=encodeUPCA(text);    break;
+    }
+
+    lastMods=result.mods; lastMeta=result.meta;
+    contentInp.classList.remove('err');
+    previewErr.style.display='none';
+    contentHint.className='hint';
+    contentHint.textContent=getHint(text, result.meta);
+    renderToCanvas(previewCanvas, lastMods, lastMeta, opts);
+    updateStatus(lastMods, lastMeta, opts);
+
+  } catch(e) {
+    contentInp.classList.add('err');
+    previewErr.style.display='block';
+    previewErr.textContent=e.message;
+    contentHint.className='errhint';
+    contentHint.textContent=e.message;
+  }
+}
+
+function getHint(input, meta) {
+  if (!meta) return '';
+  if (meta.type==='ean13') {
+    const digits=input.replace(/\D/g,'');
+    return digits.length===12 ? `Check digit: ${meta.checkDigit}` : `EAN-13 · check digit validated`;
+  }
+  if (meta.type==='upca') {
+    const digits=input.replace(/\D/g,'');
+    return digits.length===11 ? `Check digit: ${meta.checkDigit}` : `UPC-A · check digit validated`;
+  }
+  if (meta.type==='itf') return `${input.length} digits`;
+  if (meta.type==='code39') return `${input.length} chars · encoded as uppercase`;
+  if (meta.type==='code128') return `${input.length} chars · subset ${/^\d+$/.test(input)&&input.length>=2&&input.length%2===0?'C (numeric)':'B'}`;
+  return '';
+}
+
+function updateStatus(mods, meta, opts) {
+  const tw=mods.reduce((s,m)=>s+m.w,0);
+  const isEAN=meta.type==='ean13'||meta.type==='upca';
+  const guardExt=isEAN&&opts.showText?Math.round(opts.fontSize*0.4+opts.textGap):(isEAN?6:0);
+  const textH=opts.showText?(opts.fontSize+opts.textGap):0;
+  const w=Math.round(tw*opts.barWidth+2*opts.quietZone*opts.barWidth+(isEAN?opts.quietZone*opts.barWidth:0));
+  const h=Math.round(opts.barHeight+(isEAN?guardExt:0)+2*opts.quietZone+textH);
+  stDims.textContent=`${w}×${h}px (native)`;
+  stType.textContent={code128:'Code 128',code39:'Code 39',itf:'ITF',ean13:'EAN-13',upca:'UPC-A'}[meta.type];
+  stInfo.textContent=`${tw} modules`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DOM REFS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const contentInp  = document.getElementById('content-inp');
+const contentHint = document.getElementById('content-hint');
+const previewCanvas=document.getElementById('preview-canvas');
+const previewErr  = document.getElementById('preview-err');
+const fgColor     = document.getElementById('fg-color');
+const fgHex       = document.getElementById('fg-hex');
+const bgColor     = document.getElementById('bg-color');
+const bgHex       = document.getElementById('bg-hex');
+const bgTransp    = document.getElementById('bg-transparent');
+const barWidthEl  = document.getElementById('bar-width');
+const barHeightEl = document.getElementById('bar-height');
+const quietZoneEl = document.getElementById('quiet-zone');
+const roundedEl   = document.getElementById('rounded');
+const cornerREl   = document.getElementById('corner-r');
+const showTextEl  = document.getElementById('show-text');
+const fontSizeEl  = document.getElementById('font-size');
+const textGapEl   = document.getElementById('text-gap');
+const customTcEl  = document.getElementById('custom-tc');
+const tcColorEl   = document.getElementById('tc-color');
+const tcHexEl     = document.getElementById('tc-hex');
+const outWidthEl  = document.getElementById('out-width');
+const stDims      = document.getElementById('st-dims');
+const stType      = document.getElementById('st-type');
+const stInfo      = document.getElementById('st-info');
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════════════════
+
+let curType='code128', curTextPos='below', curFont='monospace';
+
+const TYPE_HINTS={
+  code128:'Full ASCII (32–127) · auto-selects B/C subset',
+  ean13:  '12 digits input · check digit auto-computed',
+  upca:   '11 digits input · check digit auto-computed',
+  code39: 'A-Z 0-9 - . $ / + % space · case-insensitive',
+  itf:    'Even number of digits only'
+};
+const TYPE_DEFAULTS={
+  code128:'Hello World 123',
+  ean13:  '590123412345',
+  upca:   '03600024145',
+  code39: 'HELLO WORLD',
+  itf:    '12345678'
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  EVENT WIRING
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Sidebar collapse
+document.querySelectorAll('.sb-hdr').forEach(h=>{
+  h.addEventListener('click',()=>h.closest('.sb-sec').classList.toggle('collapsed'));
+});
+
+// Type pills
+document.querySelectorAll('#type-pills .pill').forEach(p=>{
+  p.addEventListener('click',()=>{
+    document.querySelectorAll('#type-pills .pill').forEach(x=>x.classList.remove('active'));
+    p.classList.add('active');
+    curType=p.dataset.type;
+    document.getElementById('type-hint').textContent=TYPE_HINTS[curType];
+    contentInp.value=TYPE_DEFAULTS[curType];
+    // For EAN/UPC, hide text position pills (position is fixed by standard)
+    document.getElementById('text-pos-row').style.display=(curType==='ean13'||curType==='upca')?'none':'flex';
+    encodeAndRender();
+  });
+});
+
+// Content
+contentInp.addEventListener('input', encodeAndRender);
+
+// Color sync helper
+function wireColor(picker, hexInput, render=true) {
+  picker.addEventListener('input',()=>{ hexInput.value=picker.value; if(render) encodeAndRender(); });
+  hexInput.addEventListener('input',()=>{ if(/^#[0-9a-fA-F]{6}$/.test(hexInput.value)){ picker.value=hexInput.value; if(render) encodeAndRender(); } });
+}
+wireColor(fgColor, fgHex);
+wireColor(bgColor, bgHex);
+wireColor(tcColorEl, tcHexEl);
+
+bgTransp.addEventListener('change', encodeAndRender);
+
+document.getElementById('btn-swap').addEventListener('click',()=>{
+  const t=fgColor.value; fgColor.value=bgColor.value; bgColor.value=t;
+  fgHex.value=fgColor.value; bgHex.value=bgColor.value; encodeAndRender();
+});
+
+// Sliders
+function wireSlider(id, valId, fmt) {
+  const sl=document.getElementById(id), vl=document.getElementById(valId);
+  sl.addEventListener('input',()=>{ vl.textContent=fmt(sl.value); encodeAndRender(); });
+  vl.textContent=fmt(sl.value);
+}
+wireSlider('bar-width','bw-val',v=>`${v}×`);
+wireSlider('bar-height','bh-val',v=>v);
+wireSlider('quiet-zone','qz-val',v=>v);
+wireSlider('corner-r','cr-val',v=>`${v}px`);
+wireSlider('font-size','fs-val',v=>`${v}px`);
+wireSlider('text-gap','tg-val',v=>`${v}px`);
+wireSlider('out-width','ow-val',v=>v);
+
+// Rounded toggle
+roundedEl.addEventListener('change',()=>{
+  document.getElementById('radius-row').style.display=roundedEl.checked?'flex':'none';
+  encodeAndRender();
+});
+
+// Show text toggle
+showTextEl.addEventListener('change',()=>{
+  document.getElementById('text-opts').style.display=showTextEl.checked?'block':'none';
+  encodeAndRender();
+});
+
+// Text position pills
+document.querySelectorAll('#pos-pills .pill').forEach(p=>{
+  p.addEventListener('click',()=>{
+    document.querySelectorAll('#pos-pills .pill').forEach(x=>x.classList.remove('active'));
+    p.classList.add('active'); curTextPos=p.dataset.pos; encodeAndRender();
+  });
+});
+
+// Font pills
+document.querySelectorAll('#font-pills .pill').forEach(p=>{
+  p.addEventListener('click',()=>{
+    document.querySelectorAll('#font-pills .pill').forEach(x=>x.classList.remove('active'));
+    p.classList.add('active'); curFont=p.dataset.font; encodeAndRender();
+  });
+});
+
+// Custom text color toggle
+customTcEl.addEventListener('change',()=>{
+  document.getElementById('tc-row').style.display=customTcEl.checked?'flex':'none';
+  encodeAndRender();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════════════════════════════════════
+
+function buildExportCanvas() {
+  if (!lastMods) return null;
+  const opts=getOpts();
+  const tmp=document.createElement('canvas');
+  renderToCanvas(tmp, lastMods, lastMeta, opts);
+  // Scale to output width
+  const scale=opts.outWidth/tmp.width;
+  const out=document.createElement('canvas');
+  out.width=opts.outWidth;
+  out.height=Math.round(tmp.height*scale);
+  const ctx=out.getContext('2d');
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(tmp,0,0,out.width,out.height);
+  return out;
+}
+
+document.getElementById('btn-png').addEventListener('click',()=>{
+  const c=buildExportCanvas(); if(!c) return;
+  c.toBlob(b=>{
+    const url=URL.createObjectURL(b);
+    const a=document.createElement('a');
+    a.href=url; a.download=`barcode-${curType}.png`; a.click();
+    URL.revokeObjectURL(url);
+  });
+});
+
+document.getElementById('btn-svg').addEventListener('click',()=>{
+  if(!lastMods) return;
+  const svg=generateSVG(lastMods, lastMeta, getOpts());
+  const b=new Blob([svg],{type:'image/svg+xml'});
+  const url=URL.createObjectURL(b);
+  const a=document.createElement('a');
+  a.href=url; a.download=`barcode-${curType}.svg`; a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('btn-copy').addEventListener('click',()=>{
+  const c=buildExportCanvas(); if(!c) return;
+  c.toBlob(async b=>{
+    const msg=document.getElementById('copy-msg');
+    try {
+      await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);
+      msg.textContent='Copied!'; msg.style.color='';
+    } catch(e) {
+      msg.textContent='Copy failed (browser permission denied)'; msg.style.color='#f87171';
+    }
+    msg.style.display='block';
+    setTimeout(()=>msg.style.display='none',2200);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════════════
+encodeAndRender();
+</script>
+</body>
+</html>
