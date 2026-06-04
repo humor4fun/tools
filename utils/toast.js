@@ -32,6 +32,9 @@
     el.textContent = msg;
     el.className = 'show' + (type ? ' ' + type : '');
     clearTimeout(hideTimer);
-    hideTimer = setTimeout(() => { el.classList.remove('show'); }, duration);
+    // duration=0 means persistent — no auto-dismiss
+    if (duration > 0) {
+      hideTimer = setTimeout(() => { el.classList.remove('show'); }, duration);
+    }
   };
 })();
