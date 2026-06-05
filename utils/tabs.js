@@ -61,15 +61,28 @@
       } catch(e) { /* quota */ }
     }
 
+    // Validate that a value from localStorage is a safe plain-object array.
+    // Guards against prototype pollution from crafted __proto__ payloads.
+    function isValidTabsArray(arr) {
+      return Array.isArray(arr) &&
+        arr.length > 0 &&
+        arr.every(t =>
+          t !== null &&
+          typeof t === 'object' &&
+          !Array.isArray(t) &&
+          Object.getPrototypeOf(t) === Object.prototype
+        );
+    }
+
     function load() {
       try {
         const raw = localStorage.getItem(storageKey);
         if (!raw) throw new Error('empty');
         const data = JSON.parse(raw);
-        if (!Array.isArray(data.tabs) || !data.tabs.length) throw new Error('bad');
+        if (!isValidTabsArray(data.tabs)) throw new Error('bad');
         tabs      = data.tabs;
-        activeIdx = Math.min(data.activeIdx || 0, tabs.length - 1);
-        nextId    = data.nextId || tabs.length + 1;
+        activeIdx = Math.min(Number(data.activeIdx) || 0, tabs.length - 1);
+        nextId    = Number(data.nextId) || tabs.length + 1;
       } catch(e) {
         tabs      = [Object.assign({ id: nextId++, name: '' }, makeDefault())];
         activeIdx = 0;
