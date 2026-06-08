@@ -16,7 +16,8 @@ Vanilla JS + CSS utilities shared across all tools. No build step — load via `
 <script src="../utils/slider.js"></script>    <!-- barcode / qr only -->
 <script src="../utils/banner.js"></script>    <!-- list only -->
 <script src="../utils/undo.js"></script>      <!-- list only -->
-<script src="../utils/tabs.js"></script>      <!-- list / transcode / barcode / qr -->
+<script src="../utils/tabs.js"></script>      <!-- list / transcode / barcode / qr / join -->
+<script src="../utils/progress.js"></script>   <!-- join only (so far) -->
 <script src="../utils/header.js"></script>
 <script> /* tool code; call renderHeader() + initTabs().init() at DOMContentLoaded */ </script>
 ```
@@ -168,6 +169,35 @@ window.wireSlider(id, valId, fmt, onChange)
 
 ---
 
+### `progress.js` + `progress.css`
+Auto-loads `progress.css`. Creates a progress bar container.
+```js
+const progress = window.initProgress({
+  containerId: 'progress-wrap',  // default
+  label: true                    // show text label (default: true)
+})
+
+// Determinate mode (known progress)
+progress.setValue(0.65)           // 0-1 scale
+progress.setLabel('Loading file 2/5...')
+
+// Indeterminate mode (unknown duration)
+progress.setIndeterminate(true)
+progress.setLabel('Compressing...')
+
+// Error state
+progress.setError(true)
+progress.setLabel('Error: out of memory')
+
+// Reset and visibility
+progress.reset()
+progress.hide()
+progress.show()
+```
+Returns `null` if container not found.
+
+---
+
 ## Non-abstracted features (tool-specific, not extracted)
 
 | Feature | Tool(s) | Key identifiers |
@@ -191,6 +221,11 @@ window.wireSlider(id, valId, fmt, onChange)
 | Center image overlay | qr | `loadCenterImg()`, `centerImgDataUrl` |
 | CIRCL hash lookup | transcode | `circlLookup()`, `hashlookup.circl.lu` |
 | Pure-JS MD5 | transcode | `md5()` (50-line implementation) |
+| Progress bar | join | `initProgress()`, determinate/indeterminate/error |
+| File organizer drag-drop | join | `.file-card` drag events |
+| PDF merge | join | `mergeFiles()`, pdf-lib CDN |
+
+> **TODO**: Activity log implementations in `text` and `join` differ. Consider unifying into `utils/log.js` + `utils/log.css`.
 
 ---
 

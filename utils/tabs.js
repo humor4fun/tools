@@ -23,6 +23,17 @@
      .activeIdx      → active index (read)
 
    Self-loads tabs.css from same directory.
+
+   ── Log persistence guidance ──
+   When a tool uses activity logs, logs should generally be per-tab (each tab has its own
+   log array). The log panel's open/closed state should be global (not per-tab).
+   This pattern allows users to maintain separate activity histories per workspace while
+   having consistent UI behavior across tabs. Example tab state:
+
+     { id: 1, name: 'Project A', files: [...], log: [{time, msg, type}...] }
+
+   Logs should be persisted to localStorage with a reasonable entry limit (e.g., 50 entries
+   per tab) to prevent quota issues.
 */
 'use strict';
 (function () {
