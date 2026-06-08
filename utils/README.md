@@ -19,7 +19,11 @@ Vanilla JS + CSS utilities shared across all tools. No build step — load via `
 <script src="../utils/tabs.js"></script>      <!-- list / transcode / barcode / qr / join -->
 <script src="../utils/progress.js"></script>   <!-- join only (so far) -->
 <script src="../utils/header.js"></script>
-<script> /* tool code; call renderHeader() + initTabs().init() at DOMContentLoaded */ </script>
+<!-- New shared utilities -->
+<script src="../utils/activity-log.js"></script>  <!-- text / list / transcode / join -->
+<script src="../utils/stats.js"></script>         <!-- text / list / transcode / join -->
+<script src="../utils/tab-state.js"></script>     <!-- list / transcode / join (optional) -->
+<script> /* tool code; call renderHeader(), init utilities, at DOMContentLoaded */ </script>
 ```
 
 ---
@@ -198,6 +202,166 @@ Returns `null` if container not found.
 
 ---
 
+## New Shared Utilities
+
+### `activity-log.js` + `activity-log.css`
+Unified activity/event logging panel with configurable persistence and timestamps.
+Auto-loads `activity-log.css`. Registers itself globally as `window._activityLog` for error reporting.
+
+**Default Config:**
+```js
+{
+  elementId: 'activity-log',
+  maxEntries: 500,
+  position: 'right',              // 'left' or 'right'
+  width: '280px',
+  autoClose: false,
+  autoCloseDelay: 5000,
+  timestamps: true,
+  allowSave: true,
+  allowClear: true,
+  storageKey: 'activity-log',
+  persistToLocalStorage: true
+}
+```
+
+**Usage:**
+```js
+const log = new ActivityLog('activity-log');  // Uses defaults
+const log = new ActivityLog('activity-log', {
+  position: 'left',
+  maxEntries: 1000
+});
+
+// Log entries (auto-removes "no activity" placeholder)
+log.log('Hello');
+log.ok('Success!');
+log.warn('Warning message');
+log.error('Error occurred');
+
+// UI control
+log.toggle();
+log.open();
+log.close();
+
+// Data access
+log.clear();
+log.save();  // Download as .txt
+log.export();  // Get array
+log.getEntries();
+```
+
+---
+
+### `stats.js`
+Real-time metrics display for any source element (textarea, input, contenteditable, custom).
+Automatically tracks and updates on input changes with configurable debounce.
+
+**Default Config:**
+```js
+{
+  elementId: 'stats',
+  updateOnInput: true,
+  debounceMs: 100,
+  separator: ' · ',
+  metrics: [
+    { name: 'chars', label: 'chars', fn: (content) => content.length },
+    { name: 'words', label: 'words', fn: (content) => content.split(/\s+/).filter(Boolean).length },
+    { name: 'lines', label: 'lines', fn: (content) => content.split('\n').length }
+  ],
+  format: null  // custom formatter (optional)
+}
+```
+
+**Usage:**
+```js
+const stats = new Stats(editor, {  // editor is textarea or input
+  updateOnInput: true,
+  debounceMs: 200
+});
+
+// Add custom metrics
+stats.addMetric('paragraphs', 'paragraphs', 
+  (content) => content.split(/\n\n+/).filter(Boolean).length
+);
+
+// Programmatic updates
+stats.update(newContent);
+stats.update();  // read from source
+
+// Custom rendering
+stats.setFormat((metrics) => {
+  return `${metrics.words} words, ${metrics.chars} chars`;
+});
+
+// Data access
+stats.getMetrics();  // { words: 150, chars: 850, lines: 20 }
+
+// Lifecycle
+stats.attach();   // Start listening
+stats.detach();   // Stop listening
+stats.render();   // Manual render
+```
+
+---
+
+### `tab-state.js`
+Unified tab lifecycle and state persistence. Manages creating, closing, renaming, and persisting tabs.
+Each tool defines its own tab state structure; TabControl just manages the lifecycle.
+
+**Default Config:**
+```js
+{
+  storageKey: 'tool-tabs',
+  maxTabs: 20,
+  defaultTabLabel: 'New Tab',
+  persistence: {
+    enabled: true,
+    auto: true,              // auto-persist on changes
+    debounceMs: 500
+  },
+  generateLabelFromContent: true,  // For auto-generated labels
+  tabTemplate: {}            // Merged into each new tab (tool-specific)
+}
+```
+
+**Usage:**
+```js
+const tabs = new TabControl({
+  storageKey: 'list-tabs',
+  tabTemplate: {             // Tool-specific fields
+    content: '',
+    selections: []
+  }
+});
+
+// Tab lifecycle
+const tab = tabs.newTab('My Tab');
+tabs.selectTab(tab.id);
+tabs.renameTab(tab.id, 'Renamed');
+tabs.closeTab(tab.id);
+
+// Current state
+const active = tabs.current();  // { id, label, content, selections, ... }
+
+// State management
+tabs.setTabState(tabId, { content: '...', selections: [...] });
+tabs.getCurrentState();  // Get active tab state (minus id/label)
+
+// Events
+tabs.on('new', (tab) => console.log('Tab created', tab));
+tabs.on('change', (tab) => console.log('Tab switched', tab));
+tabs.on('close', (tab) => console.log('Tab closed', tab));
+tabs.on('rename', (tab) => console.log('Tab renamed', tab));
+
+// Persistence
+tabs.persist();   // Save to localStorage
+tabs.restore();   // Load from localStorage
+tabs.export();    // Get all tabs as JSON
+```
+
+---
+
 ## Non-abstracted features (tool-specific, not extracted)
 
 | Feature | Tool(s) | Key identifiers |
@@ -206,7 +370,6 @@ Returns `null` if container not found.
 | Drag & drop (folder/tree) | text | `dataTransfer.setData('text/x-text-src', ...)` |
 | Drag & drop (chain slots) | transcode | `.chain-slot` dragover/drop events |
 | Workspace tabs (own impl) | text | `state.workspaces[]`, `renderWorkspaceTabs()` |
-| Activity log | text | `#activity-log`, timestamped, save as .txt |
 | Auto-refresh / polling | text | `setInterval` 10s per workspace |
 | Split view | text | `#split-divider`, 20–80% drag, synced scroll |
 | Breadcrumb navigation | text | `#breadcrumb`, clickable ancestors, dirty dot |
@@ -221,11 +384,8 @@ Returns `null` if container not found.
 | Center image overlay | qr | `loadCenterImg()`, `centerImgDataUrl` |
 | CIRCL hash lookup | transcode | `circlLookup()`, `hashlookup.circl.lu` |
 | Pure-JS MD5 | transcode | `md5()` (50-line implementation) |
-| Progress bar | join | `initProgress()`, determinate/indeterminate/error |
 | File organizer drag-drop | join | `.file-card` drag events |
 | PDF merge | join | `mergeFiles()`, pdf-lib CDN |
-
-> **TODO**: Activity log implementations in `text` and `join` differ. Consider unifying into `utils/log.js` + `utils/log.css`.
 
 ---
 

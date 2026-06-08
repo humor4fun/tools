@@ -46,14 +46,25 @@
     document.head.appendChild(link);
   }
 
+  const DEFAULT_CONFIG = {
+    storageKey: 'tabs',
+    containerId: 'tab-bar',
+    defaultTab: () => ({ name: '' }),
+    tabLabel: tab => tab.name || 'Untitled',
+    onSwitch: () => {},
+    onSave: () => ({}),
+    maxTabs: 20,
+    persistToLocalStorage: true
+  };
+
   window.initTabs = function initTabs(opts) {
-    opts = opts || {};
-    const storageKey  = opts.storageKey  || 'tabs';
-    const containerId = opts.containerId || 'tab-bar';
-    const makeDefault = opts.defaultTab  || (() => ({ name: '' }));
-    const getLabel    = opts.tabLabel    || (tab => tab.name || 'Untitled');
-    const onSwitch    = opts.onSwitch    || (() => {});
-    const onSave      = opts.onSave      || (() => ({}));
+    const config = { ...DEFAULT_CONFIG, ...(opts || {}) };
+    const storageKey  = config.storageKey;
+    const containerId = config.containerId;
+    const makeDefault = config.defaultTab;
+    const getLabel    = config.tabLabel;
+    const onSwitch    = config.onSwitch;
+    const onSave      = config.onSave;
 
     let tabs       = [];
     let activeIdx  = 0;

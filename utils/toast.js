@@ -1,6 +1,14 @@
 /* tools/utils/toast.js
-   window.toast(msg, type='', duration=2600)
+   
+   Flexible config toast notification system.
+   
+   Usage:
+     window.toast(msg, type='', duration=2600)        // Simple API
+     new Toast(msg, { type: 'ok', duration: 3000 })   // Class-based with config
+   
    type: '' | 'ok' | 'err' | 'warn'
+   duration: milliseconds (0 = persistent, no auto-dismiss)
+   
    Self-loads toast.css from the same directory.
 */
 'use strict';
@@ -14,6 +22,18 @@
     document.head.appendChild(link);
   }
 
+  const DEFAULT_CONFIG = {
+    defaultDuration: 2600,
+    position: 'bottom-center',        // 'bottom-center', 'top-center', etc.
+    typeMap: {                        // CSS class mapping
+      '': 'info',
+      'ok': 'ok',
+      'err': 'error',
+      'warn': 'warn'
+    },
+    maxVisible: 3                     // max toasts shown at once (not implemented)
+  };
+
   // Create element lazily
   function getEl() {
     let el = document.getElementById('toast');
@@ -26,8 +46,10 @@
   }
 
   let hideTimer;
+  
+  // Old simple API — kept for backward compatibility
   window.toast = function toast(msg, type, duration) {
-    if (duration === undefined) duration = 2600;
+    if (duration === undefined) duration = DEFAULT_CONFIG.defaultDuration;
     const el = getEl();
     el.textContent = msg;
     el.className = 'show' + (type ? ' ' + type : '');
@@ -37,4 +59,36 @@
       hideTimer = setTimeout(() => { el.classList.remove('show'); }, duration);
     }
   };
+
+  // New class-based API with flexible config
+  class Toast {
+    constructor(msg, userConfig = {}) {
+      const config = { ...DEFAULT_CONFIG, ...userConfig };
+      this.config = config;
+      this.msg = msg;
+      this.type = userConfig.type || '';
+      this.duration = userConfig.duration !== undefined ? userConfig.duration : config.defaultDuration;
+      
+      this.show();
+    }
+
+    show() {
+      const el = getEl();
+      el.textContent = this.msg;
+      el.className = 'show' + (this.type ? ' ' + this.type : '');
+      clearTimeout(hideTimer);
+      
+      if (this.duration > 0) {
+        hideTimer = setTimeout(() => { el.classList.remove('show'); }, this.duration);
+      }
+    }
+
+    hide() {
+      clearTimeout(hideTimer);
+      const el = getEl();
+      el.classList.remove('show');
+    }
+  }
+
+  window.Toast = Toast;
 })();

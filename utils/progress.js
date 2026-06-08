@@ -1,26 +1,33 @@
 /* tools/utils/progress.js
-   window.initProgress(opts) → progress controller
    
-   opts:
-     containerId {string}  ID of element to inject into (default: 'progress-wrap')
-     label       {boolean} Show text label (default: true)
+   Flexible config progress bar with determinate/indeterminate modes.
    
-   controller:
-     .setValue(v)          Set progress 0-1 (determinate mode)
-     .setLabel(text)       Update label text
-     .setIndeterminate(b)  Toggle indeterminate animation
-     .setError(b)          Toggle error state (red)
-     .reset()              Clear to zero, remove all states
-     .hide()               Hide progress container
-     .show()               Show progress container
+   Usage (old API):
+     const progress = window.initProgress({ containerId: 'progress-wrap', label: true })
+   
+   Usage (new API):
+     const progress = new ProgressBar({
+       containerId: 'progress-wrap',
+       label: true,
+       height: '4px'
+     })
+   
+   controller methods:
+      .setValue(v)          Set progress 0-1 (determinate mode)
+      .setLabel(text)       Update label text
+      .setIndeterminate(b)  Toggle indeterminate animation
+      .setError(b)          Toggle error state (red)
+      .reset()              Clear to zero, remove all states
+      .hide()               Hide progress container
+      .show()               Show progress container
    
    Self-loads progress.css from same directory.
    
    Usage notes:
-     - For known progress (e.g., file count), use setValue(0-1)
-     - For unknown duration tasks (e.g., compression), use setIndeterminate(true)
-     - On error, setError(true) turns the bar red
-     - Always call reset() before starting a new operation
+      - For known progress (e.g., file count), use setValue(0-1)
+      - For unknown duration tasks (e.g., compression), use setIndeterminate(true)
+      - On error, setError(true) turns the bar red
+      - Always call reset() before starting a new operation
 */
 'use strict';
 (function () {
@@ -32,10 +39,94 @@
     document.head.appendChild(link);
   }
 
+  const DEFAULT_CONFIG = {
+    containerId: 'progress-wrap',
+    label: true,
+    height: '4px',
+    bgColor: 'var(--bg-hover)',
+    showPercentage: false
+  };
+
+  class ProgressBar {
+    constructor(userConfig = {}) {
+      const config = { ...DEFAULT_CONFIG, ...userConfig };
+      this.config = config;
+      this.wrap = document.getElementById(config.containerId);
+
+      if (!this.wrap) {
+        console.warn('ProgressBar: container not found:', config.containerId);
+        this.wrap = null;
+        return;
+      }
+
+      this.init();
+    }
+
+    init() {
+      this.wrap.innerHTML = `
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+        ${this.config.label ? '<div class="progress-label"></div>' : ''}
+      `;
+
+      this.fill = this.wrap.querySelector('.progress-fill');
+      this.labelEl = this.wrap.querySelector('.progress-label');
+      this.isIndeterminate = false;
+      this.isError = false;
+    }
+
+    setValue(v) {
+      if (!this.fill || this.isIndeterminate || this.isError) return;
+      const pct = Math.max(0, Math.min(1, v));
+      this.fill.style.width = (pct * 100) + '%';
+    }
+
+    setLabel(text) {
+      if (this.labelEl) this.labelEl.textContent = text;
+    }
+
+    setIndeterminate(bool) {
+      if (!this.fill) return;
+      this.isIndeterminate = bool;
+      this.fill.classList.toggle('indeterminate', bool);
+      if (bool) {
+        this.fill.style.width = '100%';
+      }
+    }
+
+    setError(bool) {
+      if (!this.fill) return;
+      this.isError = bool;
+      this.fill.classList.toggle('error', bool);
+    }
+
+    reset() {
+      if (!this.fill) return;
+      this.fill.style.width = '0%';
+      this.fill.classList.remove('indeterminate', 'error');
+      if (this.labelEl) this.labelEl.textContent = '';
+      this.isIndeterminate = false;
+      this.isError = false;
+    }
+
+    hide() {
+      if (this.wrap) this.wrap.style.display = 'none';
+    }
+
+    show() {
+      if (this.wrap) this.wrap.style.display = '';
+    }
+  }
+
+  window.ProgressBar = ProgressBar;
+
+  // Old function API — kept for backward compatibility
   window.initProgress = function initProgress(opts) {
     opts = opts || {};
-    const containerId = opts.containerId || 'progress-wrap';
-    const showLabel = opts.label !== false;
+    const config = { ...DEFAULT_CONFIG, ...opts };
+    const containerId = config.containerId;
+    const showLabel = config.label !== false;
 
     const wrap = document.getElementById(containerId);
     if (!wrap) {

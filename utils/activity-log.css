@@ -1,0 +1,185 @@
+/* tools/utils/activity-log.css */
+
+.activity-log-panel {
+  position: fixed;
+  top: var(--header-h, 48px);
+  right: 0;
+  bottom: 0;
+  width: 280px;
+  height: calc(100vh - var(--header-h, 48px));
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.2s ease-out;
+  z-index: 100;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+}
+
+.activity-log-panel[data-position="left"] {
+  left: 0;
+  right: auto;
+  border-left: none;
+  border-right: 1px solid var(--border);
+  transform: translateX(-100%);
+  box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+}
+
+.activity-log-panel.visible {
+  transform: translateX(0);
+}
+
+.activity-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.activity-log-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.activity-log-buttons {
+  display: flex;
+  gap: 2px;
+}
+
+.activity-log-clear,
+.activity-log-save {
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: all 0.15s ease;
+}
+
+.activity-log-clear:hover,
+.activity-log-save:hover {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+
+.activity-log-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 4px 0;
+}
+
+.activity-log-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.activity-log-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.activity-log-body::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.activity-log-body::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+.activity-log-empty {
+  padding: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  font-style: italic;
+}
+
+.activity-log-entry {
+  display: flex;
+  gap: 8px;
+  padding: 4px 8px;
+  border-left: 3px solid transparent;
+  color: var(--text);
+  transition: background 0.1s ease;
+}
+
+.activity-log-entry:hover {
+  background: var(--bg-hover);
+}
+
+.activity-log-entry-time {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  min-width: 45px;
+}
+
+.activity-log-entry-msg {
+  flex: 1;
+  word-break: break-word;
+  color: var(--text);
+}
+
+/* Log level styling */
+.activity-log-entry.log-ok {
+  border-left-color: var(--accent-green, #4ade80);
+}
+
+.activity-log-entry.log-ok .activity-log-entry-msg {
+  color: var(--accent-green, #4ade80);
+}
+
+.activity-log-entry.log-warn {
+  border-left-color: #f59e0b;
+}
+
+.activity-log-entry.log-warn .activity-log-entry-msg {
+  color: #f59e0b;
+}
+
+.activity-log-entry.log-error {
+  border-left-color: #ef4444;
+}
+
+.activity-log-entry.log-error .activity-log-entry-msg {
+  color: #ef4444;
+}
+
+.activity-log-entry.log-log {
+  border-left-color: var(--text-muted);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .activity-log-panel {
+    width: 100%;
+    height: 50%;
+    top: auto;
+    bottom: 0;
+    border: none;
+    border-top: 1px solid var(--border);
+    transform: translateY(100%);
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+  }
+
+  .activity-log-panel[data-position="left"],
+  .activity-log-panel[data-position="right"] {
+    border: none;
+    border-top: 1px solid var(--border);
+    transform: translateY(100%);
+  }
+
+  .activity-log-panel.visible {
+    transform: translateY(0);
+  }
+}

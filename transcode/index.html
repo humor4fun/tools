@@ -300,6 +300,8 @@
 <script src="../utils/sidebar.js"></script>
 <script src="../utils/tabs.js"></script>
 <script src="../utils/header.js"></script>
+<script src="../utils/activity-log.js"></script>
+<script src="../utils/stats.js"></script>
 </head>
 <body>
 <div id="app">
@@ -453,6 +455,9 @@ const chainInput   = $('chain-input');
 const chainArea    = $('chain-area');
 const chainSummary = $('chain-summary');
 const statsEl      = $('stats');
+
+// ── Initialize utilities ──────────────────────────────────────
+const stats = statsEl ? new Stats(statsEl, { updateOnInput: true }) : null;
 
 // ── Chain state ───────────────────────────────────────────────
 // chain[i] = { op: null|string, mode: 'encode'|'decode', node, slotEl, outputEl, addBtnWrap }
@@ -1136,7 +1141,12 @@ function updateStats() {
       break;
     }
   }
-  statsEl.textContent = `Chain: ${steps} step${steps !== 1 ? 's' : ''} · in: ${ic.toLocaleString()} chars · out: ${oc.toLocaleString()} chars`;
+  const statsText = `Chain: ${steps} step${steps !== 1 ? 's' : ''} · in: ${ic.toLocaleString()} chars · out: ${oc.toLocaleString()} chars`;
+  statsEl.textContent = statsText;
+  // Update Stats utility if initialized
+  if (stats) {
+    stats.update({ input: ic, output: oc, steps: steps });
+  }
 }
 
 // ── Reset chain ───────────────────────────────────────────────

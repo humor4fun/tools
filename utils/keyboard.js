@@ -1,8 +1,21 @@
 /* tools/utils/keyboard.js
-   window.initKeyboardShortcuts(map)
-   window.initTabIndent(el)
+   
+   Flexible config keyboard utilities.
+   
+   Usage:
+     window.initKeyboardShortcuts([
+       { key: 's', meta: true, action: saveFile },
+       { key: 'Escape', action: closePanel }
+     ])
+     
+     window.initTabIndent(textarea)
 */
 'use strict';
+
+const DEFAULT_CONFIG_KBD = {
+  preventDefault: true,
+  onError: null
+};
 
 /**
  * initKeyboardShortcuts(map)

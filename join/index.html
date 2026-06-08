@@ -584,6 +584,8 @@
 <script src="../utils/sidebar.js"></script>
 <script src="../utils/tabs.js"></script>
 <script src="../utils/progress.js"></script>
+<script src="../utils/activity-log.js"></script>
+<script src="../utils/stats.js"></script>
 </head>
 <body>
 <div id="app">
@@ -798,6 +800,7 @@ function getFileIconSvg(category) {
 let nextFileId = 1;
 let progressBar = null;
 let logOpen = false;
+let activityLog = null;
 
 const defaultHrSettings = {
   height: 3,
@@ -822,43 +825,30 @@ let tabCtrl = initTabs({
 });
 
 function log(msg, type = '') {
-  const tab = tabCtrl.current();
-  if (!tab) return;
-
-  const empty = activityLogBody.querySelector('.log-empty');
-  if (empty) empty.remove();
-
-  const now = new Date();
-  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-  const entry = document.createElement('div');
-  entry.className = 'log-entry' + (type ? ' log-' + type : '');
-
-  const timeEl = document.createElement('span');
-  timeEl.className = 'log-entry-time';
-  timeEl.textContent = time;
-
-  const msgEl = document.createElement('span');
-  msgEl.className = 'log-entry-msg';
-  msgEl.textContent = msg;
-
-  entry.appendChild(timeEl);
-  entry.appendChild(msgEl);
-
-  activityLogBody.prepend(entry);
-
-  tab.log.unshift({ time, msg, type });
-  if (tab.log.length > MAX_LOG_ENTRIES) {
-    tab.log = tab.log.slice(0, MAX_LOG_ENTRIES);
-    const entries = activityLogBody.querySelectorAll('.log-entry');
-    if (entries.length > MAX_LOG_ENTRIES) {
-      for (let i = MAX_LOG_ENTRIES; i < entries.length; i++) {
-        entries[i].remove();
-      }
+  if (activityLog) {
+    // Map type to ActivityLog levels
+    if (type === 'error') {
+      activityLog.error(msg);
+    } else if (type === 'warn') {
+      activityLog.warn(msg);
+    } else if (type === 'ok') {
+      activityLog.ok(msg);
+    } else {
+      activityLog.log(msg);
     }
   }
-
-  tabCtrl.persist();
+  
+  // Also persist to tab for backup
+  const tab = tabCtrl.current();
+  if (tab) {
+    const now = new Date();
+    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    tab.log.unshift({ time, msg, type });
+    if (tab.log.length > MAX_LOG_ENTRIES) {
+      tab.log = tab.log.slice(0, MAX_LOG_ENTRIES);
+    }
+    tabCtrl.persist();
+  }
 }
 
 function addFiles(fileList) {
@@ -1129,10 +1119,17 @@ document.addEventListener('DOMContentLoaded', () => {
   tabCtrl.init();
   progressBar = initProgress({ containerId: 'progress-wrap', label: true });
 
+  // Initialize ActivityLog with custom config
+  activityLog = new ActivityLog('activity-log', {
+    maxEntries: MAX_LOG_ENTRIES,
+    persistToLocalStorage: true,
+    storageKey: 'join_activity_log'
+  });
+
   const storedLogOpen = localStorage.getItem('join_logOpen');
   if (storedLogOpen === 'true') {
     logOpen = true;
-    activityLog.classList.add('visible');
+    activityLog.open();
     btnToggleLog.classList.add('active');
     main.classList.add('log-open');
   }
@@ -1295,7 +1292,13 @@ outputFilename.addEventListener('change', () => {
 
 function toggleActivityLog() {
   logOpen = !logOpen;
-  activityLog.classList.toggle('visible', logOpen);
+  if (activityLog) {
+    if (logOpen) {
+      activityLog.open();
+    } else {
+      activityLog.close();
+    }
+  }
   btnToggleLog.classList.toggle('active', logOpen);
   main.classList.toggle('log-open', logOpen);
   localStorage.setItem('join_logOpen', logOpen);
@@ -1304,29 +1307,35 @@ function toggleActivityLog() {
 btnToggleLog.addEventListener('click', toggleActivityLog);
 
 activityLogClear.addEventListener('click', () => {
+  if (activityLog) {
+    activityLog.clear();
+  }
   const tab = tabCtrl.current();
   if (tab) {
     tab.log = [];
     tabCtrl.persist();
   }
-  activityLogBody.innerHTML = '<div class="log-empty">No activity yet.</div>';
 });
 
 activityLogSave.addEventListener('click', () => {
-  const tab = tabCtrl.current();
-  if (!tab || !tab.log || tab.log.length === 0) {
-    toast('Log is empty', 'warn', 2000);
-    return;
+  if (activityLog) {
+    activityLog.save();
+  } else {
+    const tab = tabCtrl.current();
+    if (!tab || !tab.log || tab.log.length === 0) {
+      toast('Log is empty', 'warn', 2000);
+      return;
+    }
+    const lines = tab.log.map(e => '[' + e.time + '] ' + e.msg);
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'join-log-' + new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-') + '.txt';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast('Log saved', 'ok', 2000);
   }
-  const lines = tab.log.map(e => '[' + e.time + '] ' + e.msg);
-  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'join-log-' + new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-') + '.txt';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-  toast('Log saved', 'ok', 2000);
 });
 
 successClose.addEventListener('click', () => {
@@ -1366,9 +1375,11 @@ async function mergeFiles() {
       progressBar.setLabel('Processing ' + fileObj.name + ' (' + (i + 1) + '/' + total + ')...');
 
       if (fileObj.category === 'pdf') {
+        log('Processing PDF: ' + fileObj.name, '');
         const bytes = await fileObj.file.arrayBuffer();
         const srcDoc = await PDFLib.PDFDocument.load(bytes);
         const pages = await pdfDoc.copyPages(srcDoc, srcDoc.getPageIndices());
+        const pageCount = pages.length;
         pages.forEach((page, idx) => {
           if (delimiter === 'page' && idx > 0) {
             pdfDoc.addPage(page);
@@ -1378,7 +1389,9 @@ async function mergeFiles() {
             pdfDoc.addPage(page);
           }
         });
+        log('Merged PDF: ' + fileObj.name + ' (' + pageCount + ' pages)', 'ok');
       } else if (fileObj.category === 'image') {
+        log('Processing image: ' + fileObj.name, '');
         const bytes = await fileObj.file.arrayBuffer();
         let image;
         const ext = getFileExt(fileObj.name);
@@ -1392,7 +1405,9 @@ async function mergeFiles() {
         }
         const page = pdfDoc.addPage([image.width, image.height]);
         page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+        log('Merged image: ' + fileObj.name, 'ok');
       } else if (fileObj.category === 'text') {
+        log('Processing text file: ' + fileObj.name, '');
         const text = await fileObj.file.text();
         const page = pdfDoc.addPage([612, 792]);
         const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
@@ -1423,6 +1438,7 @@ async function mergeFiles() {
             y = 750;
           }
         });
+        log('Merged text file: ' + fileObj.name, 'ok');
       } else {
         try {
           const text = await fileObj.file.text();
@@ -1430,6 +1446,7 @@ async function mergeFiles() {
           const page = pdfDoc.addPage([612, 792]);
           const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
           page.drawText(text.substring(0, 5000), { x: 20, y: 750, size: 10, font });
+          log('Merged file: ' + fileObj.name, 'ok');
         } catch (err) {
           log('Cannot embed binary file: ' + fileObj.name, 'error');
         }

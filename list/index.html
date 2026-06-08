@@ -247,6 +247,8 @@
 <script src="../utils/sidebar.js"></script>
 <script src="../utils/tabs.js"></script>
 <script src="../utils/header.js"></script>
+<script src="../utils/activity-log.js"></script>
+<script src="../utils/stats.js"></script>
 </head>
 <body>
 <div id="app">
@@ -619,6 +621,41 @@ const btnUndo   = el('btn-undo');
 const btnRedo   = el('btn-redo');
 const stackInp  = el('stack-input');
 
+// Initialize activity log and stats
+const activityLog = new ActivityLog('activity-log', {
+  maxEntries: 200,
+  position: 'right',
+  storageKey: 'list_activity_log'
+});
+
+const stats = new Stats(editor, {
+  updateOnInput: true,
+  debounceMs: 150,
+  metrics: [
+    {
+      name: 'items',
+      label: 'items',
+      fn: (content) => {
+        if (content.trim() === '') return 0;
+        return content.trim().split(/\n|,|;/).filter(s => s.trim() !== '').length;
+      }
+    },
+    {
+      name: 'words',
+      label: 'words',
+      fn: (content) => {
+        if (content.trim() === '') return 0;
+        return content.trim().split(/\s+/).length;
+      }
+    },
+    {
+      name: 'chars',
+      label: 'chars',
+      fn: (content) => content.length
+    }
+  ]
+});
+
 let undoStack = [];
 let redoStack = [];
 let stackMax  = 15;
@@ -693,12 +730,10 @@ function applyTabState(tab) {
 }
 
 // ── Stats ──────────────────────────────────────────────────────
+// Stats are now managed by stats.js utility — see initialization above
+// Legacy updateStats() kept for compatibility with applyTabState
 function updateStats() {
-  const val = editor.value;
-  const chars = val.length;
-  const words = val.trim() === '' ? 0 : val.trim().split(/\s+/).length;
-  const items = val.trim() === '' ? 0 : splitItems(val).filter(s => s.trim() !== '').length;
-  statsEl.textContent = `${items} items · ${words} words · ${chars} chars`;
+  stats.update();
 }
 
 // ── Undo / Redo ────────────────────────────────────────────────

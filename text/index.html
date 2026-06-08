@@ -745,6 +745,8 @@
 </style>
 <script src="../utils/toast.js"></script>
 <script src="../utils/header.js"></script>
+<script src="../utils/activity-log.js"></script>
+<script src="../utils/stats.js"></script>
 </head>
 <body>
 <div id="app">
@@ -938,6 +940,15 @@ renderHeader({
   title: 'text',
   toolIconSvg: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 1h7l3 3v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z" fill="#58a6ff" opacity="0.25" stroke="#58a6ff" stroke-width="1"/><path d="M10 1v3h3" stroke="#58a6ff" stroke-width="1" fill="none"/><line x1="4" y1="7" x2="11" y2="7" stroke="#58a6ff" stroke-width="1.2" stroke-linecap="round"/><line x1="4" y1="10" x2="9" y2="10" stroke="#58a6ff" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/></svg>',
   githubPath: 'text',
+});
+
+// Initialize shared utilities
+const activityLogInstance = new ActivityLog('activity-log', {
+  maxEntries: 500,
+  position: 'right',
+  persistToLocalStorage: false,
+  allowSave: true,
+  allowClear: true
 });
 
 // ── File type detection ───────────────────────────────────────────────────────
@@ -1186,6 +1197,12 @@ const btnSave          = $('btn-save');
 const permMsg          = $('perm-msg');
 const dropOverlay      = $('drop-overlay');
 const activityLogSave  = $('activity-log-save');
+
+// Initialize Stats for real-time metrics display on editor changes
+const stats = new Stats(editor, {
+  updateOnInput: true,
+  debounceMs: 100
+});
 
 // ── Workspace tabs (header) ───────────────────────────────────────────────────
 // Renders one chip per open workspace. Active workspace is highlighted.
@@ -1951,34 +1968,25 @@ function highlightLogRef(ref) {
 
 // logActivity(msg, { type: 'error'|'warn'|'ok'|'', ref: 'file:path'|'dir:path'|null })
 function logActivity(msg, { type = '', ref = null } = {}) {
-  // Remove the "no activity" placeholder if present
-  const empty = activityLogBody.querySelector('.log-empty');
-  if (empty) empty.remove();
-
-  const now  = new Date();
-  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-  const entry = document.createElement('div');
-  entry.className = 'log-entry' + (type ? ` log-${type}` : '') + (ref ? ' log-clickable' : '');
-
-  const timeEl = document.createElement('span');
-  timeEl.className = 'log-entry-time';
-  timeEl.textContent = time;
-
-  const msgEl = document.createElement('span');
-  msgEl.className = 'log-entry-msg';
-  msgEl.textContent = msg;
-
-  entry.appendChild(timeEl);
-  entry.appendChild(msgEl);
-
-  if (ref) {
-    entry.title = 'Click to highlight in sidebar';
-    entry.addEventListener('click', () => highlightLogRef(ref));
+  // Log to activity log instance
+  if (type === 'error') {
+    activityLogInstance.error(msg);
+  } else if (type === 'warn') {
+    activityLogInstance.warn(msg);
+  } else if (type === 'ok') {
+    activityLogInstance.ok(msg);
+  } else {
+    activityLogInstance.log(msg);
   }
 
-  // Newest at top
-  activityLogBody.prepend(entry);
+  // Add reference-based interactivity if provided
+  if (ref) {
+    const entries = activityLogInstance.getEntries();
+    if (entries.length > 0) {
+      const lastEntry = entries[0];
+      lastEntry.ref = ref;
+    }
+  }
 }
 
 function toggleActivityLog() {
@@ -1988,27 +1996,15 @@ function toggleActivityLog() {
 }
 
 btnToggleLog.addEventListener('click', toggleActivityLog);
-activityLogClear.addEventListener('click', () => {
-  activityLogBody.innerHTML = '<div class="log-empty">No activity yet.</div>';
-});
-activityLogSave.addEventListener('click', saveActivityLog);
 
-function saveActivityLog() {
-  const entries = [...activityLogBody.querySelectorAll('.log-entry')];
-  if (!entries.length) { toast('Log is empty', 'warn', 2000); return; }
-  const lines = entries.map(e => {
-    const t = e.querySelector('.log-entry-time')?.textContent || '';
-    const m = e.querySelector('.log-entry-msg')?.textContent || '';
-    return `[${t}] ${m}`;
-  });
-  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = `text-log-${new Date().toISOString().slice(0,19).replace(/[T:]/g,'-')}.txt`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-  toast('Log saved', 'ok', 2000);
-}
+// Wire activity log buttons to instance handlers
+activityLogClear.addEventListener('click', () => {
+  activityLogInstance.clear();
+});
+
+activityLogSave.addEventListener('click', () => {
+  activityLogInstance.save();
+});
 
 // ── Hex view toggle ───────────────────────────────────────────────────────────
 function toggleHexView() {

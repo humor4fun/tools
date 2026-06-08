@@ -1,16 +1,18 @@
 /* tools/utils/banner.js
-   Inline dismissible warning banners.
+   
+   Flexible config dismissible warning banners.
    Self-loads banner.css.
 
    API:
-     createBanner(id, opts) → bannerEl
-       opts.dismissKey   — localStorage key for permanent dismissal (optional)
-       opts.insertBefore — selector of element to insert banner before (default: first child of body)
-       opts.message      — initial message text (optional)
+      createBanner(id, opts) → bannerEl
+        opts.dismissKey   — localStorage key for permanent dismissal (optional)
+        opts.insertBefore — selector of element to insert banner before (optional)
+        opts.message      — initial message text (optional)
+        opts.showDismiss  — show dismiss button (default: true if dismissKey set)
 
-     showBanner(id, message)   — show banner with message
-     hideBanner(id)            — hide banner (not dismissed permanently)
-     isBannerDismissed(key)    — returns true if permanently dismissed
+      showBanner(id, message)   — show banner with message
+      hideBanner(id)            — hide banner (not dismissed permanently)
+      isBannerDismissed(key)    — returns true if permanently dismissed
 */
 'use strict';
 (function () {
@@ -23,10 +25,17 @@
     document.head.appendChild(link);
   }
 
+  const DEFAULT_CONFIG = {
+    dismissKey: null,
+    insertBefore: null,
+    message: '',
+    showDismiss: true
+  };
+
   const registry = {};
 
-  window.createBanner = function createBanner(id, opts) {
-    opts = opts || {};
+  window.createBanner = function createBanner(id, userOpts) {
+    const opts = { ...DEFAULT_CONFIG, ...(userOpts || {}) };
 
     // If permanently dismissed, don't create
     if (opts.dismissKey && localStorage.getItem(opts.dismissKey) === '1') {

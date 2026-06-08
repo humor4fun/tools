@@ -1,13 +1,20 @@
 /* tools/utils/undo.js
-   window.UndoStack — per-instance undo/redo stack
+   
+   Flexible config undo/redo stack.
+   
+   Usage:
+     const undo = new UndoStack(200)  // max 200 snapshots
+     undo.push(snapshot)
+     undo.undo() / redo()
 */
 'use strict';
 window.UndoStack = class UndoStack {
   /**
    * @param {number} maxSize  Maximum number of snapshots to retain (default 200)
    */
-  constructor(maxSize) {
-    this._max  = maxSize || 200;
+  constructor(maxSize = 200) {
+    const DEFAULT_MAX_SIZE = 200;
+    this._max  = maxSize || DEFAULT_MAX_SIZE;
     this._hist = [];   // snapshots (oldest → newest)
     this._cur  = -1;   // index of current snapshot
   }
