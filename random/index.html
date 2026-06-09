@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<!--
+  random — Encryption Keys & Random Data Generator
+  Author: Chris Holt
+  License: GNU Affero General Public License v3.0 (AGPL-3.0)
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  https://www.gnu.org/licenses/agpl-3.0.html
+
+  Source: https://github.com/humor4fun/tools/tree/main/random
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>random · tools.bluejar.org</title>
+<link rel="stylesheet" href="../utils/tokens.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-input: #1c2232;
+    --bg-active: #243047;
+    --border-light: #1e2a3d;
+    --accent: var(--accent-blue);
+    --accent-h: var(--accent-blue-h);
+    --font-ui: var(--font-sans);
+    --hdr: 44px;
+    --sw: 280px;
+    --stbar: 28px;
+    --r: var(--radius);
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 13px;
+  }
+
+  #app {
+    display: grid;
+    grid-template-columns: var(--sw) 1fr;
+    grid-template-rows: var(--hdr) 1fr var(--stbar);
+    height: 100vh;
+  }
+
+  #header { z-index: 10; }
+
+  aside {
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .main-content {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  #options-panel {
+    width: 320px;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  #results-area {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+  }
+
+  /* Sidebar sections */
+  .sb-sec {
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .sb-sec:last-child { border-bottom: none; }
+
+  .sb-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 14px;
+    background: var(--bg-hover);
+    cursor: pointer;
+    user-select: none;
+    font-weight: 500;
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: background 0.15s;
+  }
+
+  .sb-hdr:hover { background: var(--bg-active); }
+
+  .sb-hdr svg { flex-shrink: 0; }
+
+  .sb-chevron {
+    display: inline-flex;
+    transition: transform 0.2s;
+    margin-left: auto;
+  }
+
+  .sb-sec.open .sb-chevron {
+    transform: rotate(180deg);
+  }
+
+  .sb-body {
+    max-height: 1000px;
+    overflow: hidden;
+    transition: max-height 0.2s, padding 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .sb-sec:not(.open) .sb-body {
+    max-height: 0;
+    padding: 0;
+  }
+
+  .sb-item {
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    font-size: 12px;
+    border-left: 2px solid transparent;
+    color: var(--text-muted);
+  }
+
+  .sb-item:hover { background: var(--bg-active); color: var(--text); }
+
+  .sb-item.active {
+    background: var(--bg-active);
+    border-left-color: var(--accent);
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* Options panel */
+  .option-group {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .option-group:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+  }
+
+  .option-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .option-input {
+    width: 100%;
+    padding: 6px 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text);
+    font-size: 12px;
+    font-family: var(--font-mono);
+  }
+
+  .option-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--bg);
+  }
+
+  .option-select {
+    width: 100%;
+    padding: 6px 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text);
+    font-size: 12px;
+  }
+
+  .option-select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  .checkbox-item input[type="checkbox"] {
+    cursor: pointer;
+  }
+
+  .button-group {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .button-group button {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--r);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: opacity 0.15s;
+  }
+
+  .button-group button:hover { opacity: 0.9; }
+  .button-group button:active { opacity: 0.8; }
+
+  .button-group button.secondary {
+    background: var(--bg-active);
+    color: var(--text);
+  }
+
+  /* Results grid */
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 12px;
+  }
+
+  .result-card {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .result-value {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    word-break: break-all;
+    background: var(--bg);
+    padding: 8px;
+    border-radius: 4px;
+    color: var(--accent-blue);
+  }
+
+  .result-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .result-actions button {
+    flex: 1;
+    padding: 6px 8px;
+    background: var(--bg-active);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.15s;
+  }
+
+  .result-actions button:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+
+  .strength-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--bg);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .strength-bar-fill {
+    height: 100%;
+    transition: width 0.2s, background-color 0.2s;
+  }
+
+  .strength-bar-fill.weak { background-color: #f85149; width: 25%; }
+  .strength-bar-fill.medium { background-color: #d29922; width: 60%; }
+  .strength-bar-fill.strong { background-color: #3fb950; width: 100%; }
+
+  .result-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .result-meta span {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  #statusbar {
+    background: var(--bg-sidebar);
+    border-top: 1px solid var(--border);
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .strength-checker {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+
+  .strength-checker input {
+    width: 100%;
+    padding: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .strength-checker input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .strength-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .strength-info div {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .progress-wrap {
+    padding: 12px;
+    background: var(--bg-input);
+    border-bottom: 1px solid var(--border);
+    display: none;
+  }
+
+  .progress-wrap.visible {
+    display: block;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.2s;
+  }
+
+  .progress-label {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  #empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-muted);
+    gap: 16px;
+  }
+
+  #empty-state svg {
+    opacity: 0.4;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="header"></div>
+  <aside id="sidebar"></aside>
+
+  <main>
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-bar">
+        <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+      </div>
+      <div class="progress-label" id="progress-label">Generating...</div>
+    </div>
+
+    <div class="main-content">
+      <div id="options-panel">
+        <div class="strength-checker">
+          <input type="text" id="strength-input" placeholder="Check password strength...">
+          <div class="strength-bar">
+            <div class="strength-bar-fill" id="strength-fill"></div>
+          </div>
+          <div class="strength-info" id="strength-info">
+            <div><span>Strength:</span><span id="strength-level">—</span></div>
+            <div><span>Entropy:</span><span id="strength-entropy">—</span></div>
+            <div><span>Time:</span><span id="strength-time">—</span></div>
+            <div><span>Length:</span><span id="strength-length">—</span></div>
+          </div>
+        </div>
+
+        <div id="generator-options"></div>
+
+        <div class="button-group">
+          <button id="btn-generate">Generate</button>
+          <button id="btn-export" class="secondary">Export</button>
+        </div>
+      </div>
+
+      <div id="results-area">
+        <div id="empty-state">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+          </svg>
+          <p>Select a generator from the sidebar</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="statusbar">
+    <span id="status-text">Ready</span>
+  </div>
+</div>
+
+<script src="../utils/tokens.css"></script>
+<script src="../utils/header.js"></script>
+<script src="../utils/sidebar.js"></script>
+<script src="../utils/clipboard.js"></script>
+<script src="../utils/toast.js"></script>
+<script src="../utils/progress.js"></script>
+<script src="../utils/activity-log.js"></script>
+<script src="../utils/generators.js"></script>
+
+<script>
+'use strict';
+
+// Configuration
+const GENERATORS = {
+  passwords: [
+    { id: 'random-password', name: 'Random Password', fn: 'randomPassword' },
+    { id: 'passphrase', name: 'Passphrase', fn: 'passphrase' },
+    { id: 'pronounceable', name: 'Pronounceable', fn: 'pronounceable' },
+    { id: 'master-password', name: 'Master Password', fn: 'masterPassword' },
+    { id: 'pin', name: 'PIN Code', fn: 'pinCode' },
+    { id: 'wifi', name: 'WiFi Password', fn: 'wifiPassword' },
+    { id: 'recovery', name: 'Recovery Codes', fn: 'recoveryCodes' },
+    { id: 'backup', name: 'Backup Codes', fn: 'backupCodes' },
+    { id: 'temp-password', name: 'Temporary Password', fn: 'temporaryPassword' },
+    { id: 'gaming', name: 'Gaming Password', fn: 'gamingPassword' },
+    { id: 'developer', name: 'Developer Password', fn: 'developerPassword' }
+  ],
+  encryption: [
+    { id: 'aes', name: 'AES Key', fn: 'aesKey' },
+    { id: 'rsa', name: 'RSA Key Pair', fn: 'rsaKeyPair' }
+  ],
+  ssh: [
+    { id: 'ssh', name: 'SSH Key Pair', fn: 'sshKeyPair' }
+  ],
+  api: [
+    { id: 'api-key', name: 'API Key', fn: 'apiKey' },
+    { id: 'jwt', name: 'JWT Secret', fn: 'jwtSecret' },
+    { id: 'uuid', name: 'UUID v4', fn: 'uuidV4' },
+    { id: 'hash', name: 'Hash + Salt', fn: 'hashWithSalt' }
+  ]
+};
+
+const DEFAULT_OPTIONS = {
+  'random-password': { length: 16, uppercase: true, lowercase: true, numbers: true, symbols: false, excludeAmbiguous: false, quantity: 5 },
+  'passphrase': { wordCount: 4, separator: '-', capitalize: false, addNumber: false, quantity: 5 },
+  'pronounceable': { length: 12, capitalize: false, includeNumbers: false, quantity: 5 },
+  'master-password': { length: 24, symbols: true, excludeAmbiguous: true, quantity: 5 },
+  'pin': { length: 6, quantity: 5 },
+  'wifi': { length: 20, charset: 'alphanumeric', quantity: 5 },
+  'recovery': { count: 10, format: '4-4-4', quantity: 1 },
+  'backup': { count: 10, format: 'alphanumeric', quantity: 1 },
+  'temp-password': { length: 12, expiryHint: '1h', quantity: 5 },
+  'gaming': { length: 16, symbols: true, quantity: 5 },
+  'developer': { length: 24, format: 'mixed', quantity: 5 },
+  'aes': { bits: 256, quantity: 5 },
+  'rsa': { bits: 2048, quantity: 1 },
+  'ssh': { algorithm: 'Ed25519', format: 'OpenSSH', quantity: 1 },
+  'api-key': { length: 32, prefix: '', quantity: 5 },
+  'jwt': { length: 32, quantity: 5 },
+  'uuid': { quantity: 5 },
+  'hash': { algorithm: 'SHA-256', saltBytes: 16, quantity: 5 }
+};
+
+// State
+let currentGenerator = null;
+let currentOptions = {};
+let currentResults = [];
+let activityLog = null;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', async () => {
+  // Set up header
+  initHeader({
+    title: 'random',
+    showTabs: false,
+    showGithub: true,
+    githubPath: 'humor4fun/tools/tree/main/random'
+  });
+
+  // Set up activity log
+  activityLog = new ActivityLog('activity-log', {
+    maxEntries: 200,
+    persistToLocalStorage: true,
+    storageKey: 'random_activity_log'
+  });
+
+  // Set up sidebar
+  renderSidebar();
+
+  // Set up options panel
+  renderOptionsPanel('aes'); // Default to AES
+
+  // Set up strength checker
+  document.getElementById('strength-input').addEventListener('input', e => {
+    checkPasswordStrength(e.target.value);
+  });
+
+  // Set up buttons
+  document.getElementById('btn-generate').addEventListener('click', generateValues);
+  document.getElementById('btn-export').addEventListener('click', exportResults);
+
+  // Log initialization
+  activityLog.log('Tool loaded: AES Keys selected by default');
+
+  // Restore last generator from localStorage
+  const lastGenerator = localStorage.getItem('random_lastGenerator');
+  if (lastGenerator && GENERATORS[lastGenerator.split('-')[0]]) {
+    const generatorId = lastGenerator;
+    renderOptionsPanel(generatorId);
+    selectSidebarItem(generatorId);
+    currentGenerator = generatorId;
+  }
+});
+
+function renderSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+
+  const sections = [
+    { name: 'Passwords', key: 'passwords' },
+    { name: 'Encryption Keys', key: 'encryption' },
+    { name: 'SSH Keys', key: 'ssh' },
+    { name: 'API & Utilities', key: 'api' }
+  ];
+
+  sections.forEach(section => {
+    const sec = document.createElement('div');
+    sec.className = 'sb-sec open';
+    sec.innerHTML = `
+      <div class="sb-hdr">
+        <span>${section.name}</span>
+        <svg class="sb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    `;
+
+    const body = document.createElement('div');
+    body.className = 'sb-body';
+
+    GENERATORS[section.key].forEach(gen => {
+      const item = document.createElement('div');
+      item.className = 'sb-item';
+      item.dataset.id = gen.id;
+      item.textContent = gen.name;
+      item.addEventListener('click', () => {
+        selectGenerator(gen.id);
+      });
+      body.appendChild(item);
+    });
+
+    sec.appendChild(body);
+    sec.querySelector('.sb-hdr').addEventListener('click', () => {
+      sec.classList.toggle('open');
+    });
+
+    sidebar.appendChild(sec);
+  });
+}
+
+function selectGenerator(generatorId) {
+  currentGenerator = generatorId;
+  selectSidebarItem(generatorId);
+  renderOptionsPanel(generatorId);
+  currentResults = [];
+  document.getElementById('results-area').innerHTML = '<div id="empty-state"><p>Click Generate to create values</p></div>';
+  localStorage.setItem('random_lastGenerator', generatorId);
+  activityLog.log(`Generator selected: ${generatorId}`);
+}
+
+function selectSidebarItem(generatorId) {
+  document.querySelectorAll('.sb-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.id === generatorId);
+  });
+}
+
+function renderOptionsPanel(generatorId) {
+  const optionsPanel = document.getElementById('generator-options');
+  optionsPanel.innerHTML = '';
+
+  currentOptions = { ...DEFAULT_OPTIONS[generatorId] };
+
+  // Render options based on generator type
+  if (generatorId === 'random-password') {
+    optionsPanel.innerHTML = `
+      <div class="option-group">
+        <label class="option-label">Length</label>
+        <input type="number" id="opt-length" class="option-input" min="8" max="128" value="${currentOptions.length}">
+      </div>
+      <div class="option-group">
+        <label class="option-label">Characters</label>
+        <div class="checkbox-group">
+          <label class="checkbox-item">
+            <input type="checkbox" id="opt-upper" ${currentOptions.uppercase ? 'checked' : ''}>
+            <span>Uppercase (A-Z)</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="opt-lower" ${currentOptions.lowercase ? 'checked' : ''}>
+            <span>Lowercase (a-z)</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="opt-numbers" ${currentOptions.numbers ? 'checked' : ''}>
+            <span>Numbers (0-9)</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="opt-symbols" ${currentOptions.symbols ? 'checked' : ''}>
+            <span>Symbols (!@#...)</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="opt-ambiguous" ${currentOptions.excludeAmbiguous ? 'checked' : ''}>
+            <span>Exclude ambiguous</span>
+          </label>
+        </div>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
+      </div>
+    `;
+
+    document.getElementById('opt-length').addEventListener('change', e => currentOptions.length = parseInt(e.target.value));
+    document.getElementById('opt-upper').addEventListener('change', e => currentOptions.uppercase = e.target.checked);
+    document.getElementById('opt-lower').addEventListener('change', e => currentOptions.lowercase = e.target.checked);
+    document.getElementById('opt-numbers').addEventListener('change', e => currentOptions.numbers = e.target.checked);
+    document.getElementById('opt-symbols').addEventListener('change', e => currentOptions.symbols = e.target.checked);
+    document.getElementById('opt-ambiguous').addEventListener('change', e => currentOptions.excludeAmbiguous = e.target.checked);
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+  } else if (generatorId === 'passphrase') {
+    optionsPanel.innerHTML = `
+      <div class="option-group">
+        <label class="option-label">Words</label>
+        <input type="number" id="opt-words" class="option-input" min="2" max="10" value="${currentOptions.wordCount}">
+      </div>
+      <div class="option-group">
+        <label class="option-label">Separator</label>
+        <select id="opt-separator" class="option-select">
+          <option value="-" ${currentOptions.separator === '-' ? 'selected' : ''}>Hyphen (-)</option>
+          <option value=" " ${currentOptions.separator === ' ' ? 'selected' : ''}>Space ( )</option>
+          <option value="_" ${currentOptions.separator === '_' ? 'selected' : ''}>Underscore (_)</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <div class="checkbox-group">
+          <label class="checkbox-item">
+            <input type="checkbox" id="opt-capitalize" ${currentOptions.capitalize ? 'checked' : ''}>
+            <span>Capitalize</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="opt-addnumber" ${currentOptions.addNumber ? 'checked' : ''}>
+            <span>Add number</span>
+          </label>
+        </div>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
+      </div>
+    `;
+
+    document.getElementById('opt-words').addEventListener('change', e => currentOptions.wordCount = parseInt(e.target.value));
+    document.getElementById('opt-separator').addEventListener('change', e => currentOptions.separator = e.target.value);
+    document.getElementById('opt-capitalize').addEventListener('change', e => currentOptions.capitalize = e.target.checked);
+    document.getElementById('opt-addnumber').addEventListener('change', e => currentOptions.addNumber = e.target.checked);
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+  } else if (generatorId === 'aes') {
+    optionsPanel.innerHTML = `
+      <div class="option-group">
+        <label class="option-label">Key Size</label>
+        <select id="opt-bits" class="option-select">
+          <option value="128" ${currentOptions.bits === 128 ? 'selected' : ''}>128-bit</option>
+          <option value="192" ${currentOptions.bits === 192 ? 'selected' : ''}>192-bit</option>
+          <option value="256" ${currentOptions.bits === 256 ? 'selected' : ''}>256-bit</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
+      </div>
+    `;
+
+    document.getElementById('opt-bits').addEventListener('change', e => currentOptions.bits = parseInt(e.target.value));
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+  } else if (generatorId === 'uuid') {
+    optionsPanel.innerHTML = `
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
+      </div>
+      <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Generates UUIDs v4 (random)</p>
+    `;
+
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+  } else {
+    // Generic quantity option
+    optionsPanel.innerHTML = `
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity || 5}">
+      </div>
+    `;
+
+    const qty = document.getElementById('opt-quantity');
+    if (qty) {
+      qty.addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+    }
+  }
+}
+
+function checkPasswordStrength(password) {
+  if (!password) {
+    document.getElementById('strength-level').textContent = '—';
+    document.getElementById('strength-entropy').textContent = '—';
+    document.getElementById('strength-time').textContent = '—';
+    document.getElementById('strength-length').textContent = '—';
+    document.getElementById('strength-fill').className = 'strength-bar-fill';
+    return;
+  }
+
+  const strength = Generators.checkStrength(password);
+  const strengthLevels = { weak: 'Weak', medium: 'Medium', strong: 'Strong' };
+
+  document.getElementById('strength-level').textContent = strengthLevels[strength.strength] || strength.strength;
+  document.getElementById('strength-entropy').textContent = strength.entropy + ' bits';
+  document.getElementById('strength-time').textContent = strength.timeToGuess;
+  document.getElementById('strength-length').textContent = password.length + ' chars';
+
+  const fillEl = document.getElementById('strength-fill');
+  fillEl.className = 'strength-bar-fill ' + strength.strength;
+}
+
+async function generateValues() {
+  if (!currentGenerator) {
+    toast('Please select a generator', 'warn', 2000);
+    return;
+  }
+
+  const generatorName = Object.values(GENERATORS).flat().find(g => g.id === currentGenerator).name;
+  const generatorFn = Object.values(GENERATORS).flat().find(g => g.id === currentGenerator).fn;
+
+  // Show progress
+  document.getElementById('progress-wrap').classList.add('visible');
+  document.getElementById('status-text').textContent = `Generating ${currentOptions.quantity} ${generatorName}(s)...`;
+
+  currentResults = [];
+
+  try {
+    const quantity = currentOptions.quantity || 5;
+    for (let i = 0; i < quantity; i++) {
+      const progress = Math.round((i / quantity) * 100);
+      document.getElementById('progress-bar-fill').style.width = progress + '%';
+      document.getElementById('progress-label').textContent = `${i + 1} of ${quantity}...`;
+
+      const result = await Generators[generatorFn](currentOptions);
+      currentResults.push(result);
+
+      // Yield to browser
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    document.getElementById('progress-wrap').classList.remove('visible');
+    document.getElementById('status-text').textContent = `Generated ${quantity} ${generatorName}(s)`;
+    renderResults();
+    activityLog.ok(`Generated ${quantity} ${generatorName}(s)`);
+
+  } catch (err) {
+    document.getElementById('progress-wrap').classList.remove('visible');
+    document.getElementById('status-text').textContent = 'Error generating values';
+    toast('Error: ' + err.message, 'err', 3000);
+    activityLog.error('Generation failed: ' + err.message);
+  }
+}
+
+function renderResults() {
+  const resultsArea = document.getElementById('results-area');
+  resultsArea.innerHTML = '<div class="results-grid" id="results-grid"></div>';
+  const grid = document.getElementById('results-grid');
+
+  currentResults.forEach((result, idx) => {
+    const card = document.createElement('div');
+    card.className = 'result-card';
+
+    // Extract value (could be .value, .values, or direct object)
+    const value = result.value || result.values || result.hash || '';
+
+    if (Array.isArray(result.values)) {
+      // Multiple values (recovery codes, backup codes)
+      card.innerHTML = `
+        <div>
+          <div class="result-meta" style="margin-bottom: 8px;">
+            <span>${result.count} codes (${result.format})</span>
+          </div>
+          ${result.values.map((v, i) => `<div class="result-value" style="font-size: 10px; padding: 4px;">${v}</div>`).join('')}
+        </div>
+        <div class="result-actions">
+          <button onclick="copyToClipboard('${result.values.join('\\n')}')">Copy All</button>
+        </div>
+      `;
+    } else if (result.error) {
+      card.innerHTML = `<div style="color: #f85149; font-size: 11px;">${result.error}</div>`;
+    } else {
+      const strength = result.strength ? `<span>${result.strength}</span>` : '';
+      const entropy = result.entropy ? `<span>${Math.round(result.entropy)} bits</span>` : '';
+      const charset = result.charset ? `<span>${result.charset} chars</span>` : '';
+
+      card.innerHTML = `
+        <div class="result-value">${value}</div>
+        ${result.strength ? `<div class="strength-bar"><div class="strength-bar-fill ${result.strength}"></div></div>` : ''}
+        <div class="result-meta">${strength}${entropy}${charset}</div>
+        <div class="result-actions">
+          <button onclick="copyToClipboard('${value.replace(/'/g, "\\'")}')">Copy</button>
+        </div>
+      `;
+    }
+
+    grid.appendChild(card);
+  });
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    toast('Copied to clipboard', 'ok', 2000);
+    activityLog.log('Value copied to clipboard');
+  }).catch(err => {
+    toast('Copy failed', 'err', 2000);
+  });
+}
+
+function exportResults() {
+  if (currentResults.length === 0) {
+    toast('No results to export', 'warn', 2000);
+    return;
+  }
+
+  const generatorName = Object.values(GENERATORS).flat().find(g => g.id === currentGenerator).name;
+  const timestamp = new Date().toISOString();
+
+  // TXT export
+  let txtContent = `${generatorName} Export\n`;
+  txtContent += `Generated: ${timestamp}\n`;
+  txtContent += `Quantity: ${currentResults.length}\n\n`;
+
+  currentResults.forEach((result, idx) => {
+    txtContent += `#${idx + 1}\n`;
+    if (result.values) {
+      txtContent += result.values.join('\n') + '\n\n';
+    } else {
+      const value = result.value || result.hash || '';
+      txtContent += value + '\n';
+      if (result.entropy) txtContent += `Entropy: ${Math.round(result.entropy)} bits\n`;
+      if (result.strength) txtContent += `Strength: ${result.strength}\n`;
+      txtContent += '\n';
+    }
+  });
+
+  const txtBlob = new Blob([txtContent], { type: 'text/plain' });
+  const txtUrl = URL.createObjectURL(txtBlob);
+  const txtLink = document.createElement('a');
+  txtLink.href = txtUrl;
+  txtLink.download = `${currentGenerator}-${timestamp.split('T')[0]}.txt`;
+  txtLink.click();
+  URL.revokeObjectURL(txtUrl);
+
+  // JSON export
+  const jsonData = {
+    generator: currentGenerator,
+    generatorName,
+    timestamp,
+    quantity: currentResults.length,
+    options: currentOptions,
+    results: currentResults
+  };
+
+  const jsonBlob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+  const jsonUrl = URL.createObjectURL(jsonBlob);
+  const jsonLink = document.createElement('a');
+  jsonLink.href = jsonUrl;
+  jsonLink.download = `${currentGenerator}-${timestamp.split('T')[0]}.json`;
+  jsonLink.click();
+  URL.revokeObjectURL(jsonUrl);
+
+  toast('Exported TXT and JSON', 'ok', 2000);
+  activityLog.ok(`Exported ${currentResults.length} results as TXT and JSON`);
+}
+</script>
+
+</body>
+</html>
