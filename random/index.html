@@ -517,6 +517,99 @@ const GENERATORS = {
   ]
 };
 
+const GENERATOR_META = {
+  'random-password': {
+    name: 'Random Password',
+    description: 'General-purpose random password from configurable character sets. Suitable for most online accounts.',
+    tags: ['passwords', 'general']
+  },
+  'passphrase': {
+    name: 'Passphrase',
+    description: 'Multiple random dictionary words separated by delimiters. NIST-recommended, memorable and secure.',
+    tags: ['passwords', 'memorable']
+  },
+  'pronounceable': {
+    name: 'Pronounceable',
+    description: 'Consonant-vowel alternating patterns. Easier to say aloud and type from memory.',
+    tags: ['passwords', 'memorable']
+  },
+  'master-password': {
+    name: 'Master Password',
+    description: 'High-entropy password for password managers and critical root accounts. Maximum security.',
+    tags: ['passwords', 'critical']
+  },
+  'pin': {
+    name: 'PIN Code',
+    description: 'Numeric PIN for device locks, bank cards, and access codes. Numbers only.',
+    tags: ['passwords', 'numeric']
+  },
+  'wifi': {
+    name: 'WiFi Password',
+    description: 'Router-compatible WiFi password (8-63 chars). Avoids ambiguous characters.',
+    tags: ['passwords', 'networking']
+  },
+  'recovery': {
+    name: 'Recovery Codes',
+    description: 'One-time grouped hex codes for emergency 2FA backup access. Keep these secure.',
+    tags: ['passwords', 'backup']
+  },
+  'backup': {
+    name: 'Backup Codes',
+    description: 'Service-compatible backup authentication codes in alphanumeric, numeric, or hex format.',
+    tags: ['passwords', 'backup']
+  },
+  'temp-password': {
+    name: 'Temporary Password',
+    description: 'Short-lived password with expiry hint label. Intended for one-time or temporary use.',
+    tags: ['passwords', 'temporary']
+  },
+  'gaming': {
+    name: 'Gaming Password',
+    description: 'Account password avoiding characters that confuse game clients and controllers.',
+    tags: ['passwords', 'specialized']
+  },
+  'developer': {
+    name: 'Developer Password',
+    description: 'Random token in mixed, base64-safe, or hex format for development and CI/CD.',
+    tags: ['passwords', 'development']
+  },
+  'aes': {
+    name: 'AES Key',
+    description: 'Symmetric encryption key for AES-128, AES-192, or AES-256-GCM. Hex and base64 formats.',
+    tags: ['encryption', 'symmetric']
+  },
+  'rsa': {
+    name: 'RSA Key Pair',
+    description: 'Asymmetric key pair in PEM format for signing or encryption. Private key is sensitive.',
+    tags: ['encryption', 'asymmetric']
+  },
+  'ssh': {
+    name: 'SSH Key Pair',
+    description: 'ECDSA P-256 key pair: private key in PEM format, public key in OpenSSH wire format.',
+    tags: ['encryption', 'ssh']
+  },
+  'api-key': {
+    name: 'API Key',
+    description: 'Random API token with optional service prefix for identification. Treat as credentials.',
+    tags: ['api', 'credentials']
+  },
+  'jwt': {
+    name: 'JWT Secret',
+    description: 'Base64-encoded secret for signing JSON Web Tokens. Keep secure and rotate regularly.',
+    tags: ['api', 'credentials']
+  },
+  'uuid': {
+    name: 'UUID v4',
+    description: 'Random UUID for database IDs, distributed systems, and unique identifiers.',
+    tags: ['api', 'identifiers']
+  },
+  'hash': {
+    name: 'Hash + Salt',
+    description: 'Random salt plus optional SHA hash of input text. SHA-256 is recommended.',
+    tags: ['api', 'hashing']
+  }
+};
+
 const DEFAULT_OPTIONS = {
   'random-password': { length: 16, uppercase: true, lowercase: true, numbers: true, symbols: false, excludeAmbiguous: false, quantity: 5 },
   'passphrase': { wordCount: 4, separator: '-', capitalize: false, addNumber: false, quantity: 5 },
@@ -536,6 +629,28 @@ const DEFAULT_OPTIONS = {
   'jwt': { length: 32, quantity: 5 },
   'uuid': { quantity: 5 },
   'hash': { algorithm: 'SHA-256', saltBytes: 16, quantity: 5 }
+};
+
+// Generator metadata (descriptions and tags)
+const GENERATOR_META = {
+  'random-password': { name: 'Random Password', description: 'Cryptographically secure random password with customizable character set and length.' },
+  'passphrase': { name: 'Passphrase', description: 'Human-readable passphrase from English word list. Great for memorable passwords.' },
+  'pronounceable': { name: 'Pronounceable', description: 'Easy-to-pronounce random password using consonant-vowel patterns.' },
+  'master-password': { name: 'Master Password', description: 'Strong master password with high entropy for password managers.' },
+  'pin': { name: 'PIN Code', description: 'Numeric-only PIN for authentication or security codes.' },
+  'wifi': { name: 'WiFi Password', description: 'Secure WiFi password with compatibility for standard routers.' },
+  'recovery': { name: 'Recovery Codes', description: 'One-time recovery codes for account backup (2FA, password resets).' },
+  'backup': { name: 'Backup Codes', description: 'Emergency backup codes for account access in various formats.' },
+  'temp-password': { name: 'Temporary Password', description: 'Single-use temporary password with expiry hint for initial access.' },
+  'gaming': { name: 'Gaming Password', description: 'Password optimized for gaming platforms and accounts.' },
+  'developer': { name: 'Developer Password', description: 'Password for development tools, repos, and technical systems.' },
+  'aes': { name: 'AES Key', description: 'Symmetric encryption key for AES-128, AES-192, or AES-256 encryption.' },
+  'rsa': { name: 'RSA Key Pair', description: 'Asymmetric RSA key pair for encryption and digital signatures.' },
+  'ssh': { name: 'SSH Key Pair', description: 'SSH key pair for secure shell access (ECDSA P-256/P-384).' },
+  'api-key': { name: 'API Key', description: 'Random API key for service authentication and rate limiting.' },
+  'jwt': { name: 'JWT Secret', description: 'Secret key for JWT token signing and verification.' },
+  'uuid': { name: 'UUID v4', description: 'Universally Unique IDentifier version 4 (random UUID).' },
+  'hash': { name: 'Hash + Salt', description: 'Cryptographic hash with random salt for secure password hashing.' }
 };
 
 // State
@@ -656,10 +771,19 @@ function renderOptionsPanel(generatorId) {
   optionsPanel.innerHTML = '';
 
   currentOptions = { ...DEFAULT_OPTIONS[generatorId] };
+  const meta = GENERATOR_META[generatorId] || {};
+
+  // Always add description block first
+  const description = document.createElement('div');
+  description.style.cssText = 'margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);';
+  description.innerHTML = `<strong style="color: var(--text);">${meta.name}</strong><p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${meta.description}</p>`;
+  optionsPanel.appendChild(description);
 
   // Render options based on generator type
+  let html = '';
+
   if (generatorId === 'random-password') {
-    optionsPanel.innerHTML = `
+    html = `
       <div class="option-group">
         <label class="option-label">Length</label>
         <input type="number" id="opt-length" class="option-input" min="8" max="128" value="${currentOptions.length}">
@@ -694,7 +818,7 @@ function renderOptionsPanel(generatorId) {
         <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
       </div>
     `;
-
+    optionsPanel.innerHTML += html;
     document.getElementById('opt-length').addEventListener('change', e => currentOptions.length = parseInt(e.target.value));
     document.getElementById('opt-upper').addEventListener('change', e => currentOptions.uppercase = e.target.checked);
     document.getElementById('opt-lower').addEventListener('change', e => currentOptions.lowercase = e.target.checked);
@@ -702,8 +826,9 @@ function renderOptionsPanel(generatorId) {
     document.getElementById('opt-symbols').addEventListener('change', e => currentOptions.symbols = e.target.checked);
     document.getElementById('opt-ambiguous').addEventListener('change', e => currentOptions.excludeAmbiguous = e.target.checked);
     document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
   } else if (generatorId === 'passphrase') {
-    optionsPanel.innerHTML = `
+    html = `
       <div class="option-group">
         <label class="option-label">Words</label>
         <input type="number" id="opt-words" class="option-input" min="2" max="10" value="${currentOptions.wordCount}">
@@ -733,14 +858,234 @@ function renderOptionsPanel(generatorId) {
         <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
       </div>
     `;
-
+    optionsPanel.innerHTML += html;
     document.getElementById('opt-words').addEventListener('change', e => currentOptions.wordCount = parseInt(e.target.value));
     document.getElementById('opt-separator').addEventListener('change', e => currentOptions.separator = e.target.value);
     document.getElementById('opt-capitalize').addEventListener('change', e => currentOptions.capitalize = e.target.checked);
     document.getElementById('opt-addnumber').addEventListener('change', e => currentOptions.addNumber = e.target.checked);
     document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
+  } else if (generatorId === 'pronounceable') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Length</label>
+        <input type="number" id="opt-length" class="option-input" min="8" max="64" value="${currentOptions.length}">
+      </div>
+      <div class="option-group">
+        <div class="checkbox-group">
+          <label class="checkbox-item">
+            <input type="checkbox" id="opt-capitalize" ${currentOptions.capitalize ? 'checked' : ''}>
+            <span>Capitalize</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="opt-numbers" ${currentOptions.includeNumbers ? 'checked' : ''}>
+            <span>Include numbers</span>
+          </label>
+        </div>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
+      </div>
+    `;
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-length').addEventListener('change', e => currentOptions.length = parseInt(e.target.value));
+    document.getElementById('opt-capitalize').addEventListener('change', e => currentOptions.capitalize = e.target.checked);
+    document.getElementById('opt-numbers').addEventListener('change', e => currentOptions.includeNumbers = e.target.checked);
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
+  } else if (generatorId === 'master-password') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Length</label>
+        <input type="number" id="opt-length" class="option-input" min="16" max="64" value="${currentOptions.length}">
+      </div>
+      <div class="option-group">
+        <div class="checkbox-group">
+          <label class="checkbox-item">
+            <input type="checkbox" id="opt-symbols" ${currentOptions.symbols ? 'checked' : ''}>
+            <span>Include symbols</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="opt-ambiguous" ${currentOptions.excludeAmbiguous ? 'checked' : ''}>
+            <span>Exclude ambiguous</span>
+          </label>
+        </div>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
+      </div>
+    `;
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-length').addEventListener('change', e => currentOptions.length = parseInt(e.target.value));
+    document.getElementById('opt-symbols').addEventListener('change', e => currentOptions.symbols = e.target.checked);
+    document.getElementById('opt-ambiguous').addEventListener('change', e => currentOptions.excludeAmbiguous = e.target.checked);
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
+  } else if (generatorId === 'pin') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Length</label>
+        <input type="number" id="opt-length" class="option-input" min="4" max="16" value="${currentOptions.length}">
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
+      </div>
+    `;
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-length').addEventListener('change', e => currentOptions.length = parseInt(e.target.value));
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
+  } else if (generatorId === 'wifi') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Length</label>
+        <input type="number" id="opt-length" class="option-input" min="8" max="63" value="${currentOptions.length}">
+      </div>
+      <div class="option-group">
+        <label class="option-label">Charset</label>
+        <select id="opt-charset" class="option-select">
+          <option value="alphanumeric" ${currentOptions.charset === 'alphanumeric' ? 'selected' : ''}>Alphanumeric</option>
+          <option value="symbols" ${currentOptions.charset === 'symbols' ? 'selected' : ''}>Alphanumeric + Symbols</option>
+          <option value="letters" ${currentOptions.charset === 'letters' ? 'selected' : ''}>Letters only</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
+      </div>
+    `;
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-length').addEventListener('change', e => currentOptions.length = parseInt(e.target.value));
+    document.getElementById('opt-charset').addEventListener('change', e => currentOptions.charset = e.target.value);
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
+  } else if (generatorId === 'recovery') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Count</label>
+        <input type="number" id="opt-count" class="option-input" min="5" max="20" value="${currentOptions.count}">
+      </div>
+      <div class="option-group">
+        <label class="option-label">Format</label>
+        <select id="opt-format" class="option-select">
+          <option value="4-4-4" ${currentOptions.format === '4-4-4' ? 'selected' : ''}>4-4-4</option>
+          <option value="8-4" ${currentOptions.format === '8-4' ? 'selected' : ''}>8-4</option>
+          <option value="4-4-4-4" ${currentOptions.format === '4-4-4-4' ? 'selected' : ''}>4-4-4-4</option>
+          <option value="6-6" ${currentOptions.format === '6-6' ? 'selected' : ''}>6-6</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="5" value="${currentOptions.quantity}">
+      </div>
+    `;
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-count').addEventListener('change', e => currentOptions.count = parseInt(e.target.value));
+    document.getElementById('opt-format').addEventListener('change', e => currentOptions.format = e.target.value);
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
+  } else if (generatorId === 'backup') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Count</label>
+        <input type="number" id="opt-count" class="option-input" min="5" max="20" value="${currentOptions.count}">
+      </div>
+      <div class="option-group">
+        <label class="option-label">Format</label>
+        <select id="opt-format" class="option-select">
+          <option value="alphanumeric" ${currentOptions.format === 'alphanumeric' ? 'selected' : ''}>Alphanumeric</option>
+          <option value="numeric" ${currentOptions.format === 'numeric' ? 'selected' : ''}>Numeric</option>
+          <option value="hex" ${currentOptions.format === 'hex' ? 'selected' : ''}>Hexadecimal</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="5" value="${currentOptions.quantity}">
+      </div>
+    `;
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-count').addEventListener('change', e => currentOptions.count = parseInt(e.target.value));
+    document.getElementById('opt-format').addEventListener('change', e => currentOptions.format = e.target.value);
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
+  } else if (generatorId === 'temp-password') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Length</label>
+        <input type="number" id="opt-length" class="option-input" min="8" max="32" value="${currentOptions.length}">
+      </div>
+      <div class="option-group">
+        <label class="option-label">Expiry Hint</label>
+        <select id="opt-expiry" class="option-select">
+          <option value="1h" ${currentOptions.expiryHint === '1h' ? 'selected' : ''}>1 hour</option>
+          <option value="24h" ${currentOptions.expiryHint === '24h' ? 'selected' : ''}>24 hours</option>
+          <option value="7d" ${currentOptions.expiryHint === '7d' ? 'selected' : ''}>7 days</option>
+          <option value="30d" ${currentOptions.expiryHint === '30d' ? 'selected' : ''}>30 days</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
+      </div>
+    `;
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-length').addEventListener('change', e => currentOptions.length = parseInt(e.target.value));
+    document.getElementById('opt-expiry').addEventListener('change', e => currentOptions.expiryHint = e.target.value);
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
+  } else if (generatorId === 'gaming') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Length</label>
+        <input type="number" id="opt-length" class="option-input" min="8" max="32" value="${currentOptions.length}">
+      </div>
+      <div class="option-group">
+        <div class="checkbox-group">
+          <label class="checkbox-item">
+            <input type="checkbox" id="opt-symbols" ${currentOptions.symbols ? 'checked' : ''}>
+            <span>Include symbols</span>
+          </label>
+        </div>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
+      </div>
+    `;
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-length').addEventListener('change', e => currentOptions.length = parseInt(e.target.value));
+    document.getElementById('opt-symbols').addEventListener('change', e => currentOptions.symbols = e.target.checked);
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
+  } else if (generatorId === 'developer') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Length</label>
+        <input type="number" id="opt-length" class="option-input" min="12" max="64" value="${currentOptions.length}">
+      </div>
+      <div class="option-group">
+        <label class="option-label">Format</label>
+        <select id="opt-format" class="option-select">
+          <option value="mixed" ${currentOptions.format === 'mixed' ? 'selected' : ''}>Mixed</option>
+          <option value="base64safe" ${currentOptions.format === 'base64safe' ? 'selected' : ''}>Base64-safe</option>
+          <option value="hex" ${currentOptions.format === 'hex' ? 'selected' : ''}>Hexadecimal</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
+      </div>
+    `;
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-length').addEventListener('change', e => currentOptions.length = parseInt(e.target.value));
+    document.getElementById('opt-format').addEventListener('change', e => currentOptions.format = e.target.value);
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
   } else if (generatorId === 'aes') {
-    optionsPanel.innerHTML = `
+    html = `
       <div class="option-group">
         <label class="option-label">Key Size</label>
         <select id="opt-bits" class="option-select">
@@ -754,32 +1099,137 @@ function renderOptionsPanel(generatorId) {
         <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
       </div>
     `;
-
+    optionsPanel.innerHTML += html;
     document.getElementById('opt-bits').addEventListener('change', e => currentOptions.bits = parseInt(e.target.value));
     document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
-  } else if (generatorId === 'uuid') {
-    optionsPanel.innerHTML = `
+
+  } else if (generatorId === 'rsa') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Key Size</label>
+        <select id="opt-bits" class="option-select">
+          <option value="2048" ${currentOptions.bits === 2048 ? 'selected' : ''}>2048-bit</option>
+          <option value="4096" ${currentOptions.bits === 4096 ? 'selected' : ''}>4096-bit</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Purpose</label>
+        <select id="opt-purpose" class="option-select">
+          <option value="encryption" ${currentOptions.purpose === 'encryption' ? 'selected' : ''}>Encryption</option>
+          <option value="signing" ${currentOptions.purpose === 'signing' ? 'selected' : ''}>Signing</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="5" value="${currentOptions.quantity}">
+      </div>
+      <p style="font-size: 10px; color: #f85149; margin-top: 8px;">⚠️ Key generation may take 30+ seconds for 4096-bit keys</p>
+    `;
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-bits').addEventListener('change', e => currentOptions.bits = parseInt(e.target.value));
+    document.getElementById('opt-purpose').addEventListener('change', e => currentOptions.purpose = e.target.value);
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
+  } else if (generatorId === 'ssh') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Curve</label>
+        <select id="opt-curve" class="option-select">
+          <option value="P-256" ${currentOptions.namedCurve === 'P-256' ? 'selected' : ''}>P-256 (nistp256)</option>
+          <option value="P-384" ${currentOptions.namedCurve === 'P-384' ? 'selected' : ''}>P-384 (nistp384)</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Comment/Identity</label>
+        <input type="text" id="opt-comment" class="option-input" value="${currentOptions.comment || 'user@host'}" placeholder="user@host">
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="5" value="${currentOptions.quantity}">
+      </div>
+    `;
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-curve').addEventListener('change', e => currentOptions.namedCurve = e.target.value);
+    document.getElementById('opt-comment').addEventListener('change', e => currentOptions.comment = e.target.value);
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
+  } else if (generatorId === 'api-key') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Length</label>
+        <input type="number" id="opt-length" class="option-input" min="16" max="64" value="${currentOptions.length}">
+      </div>
+      <div class="option-group">
+        <label class="option-label">Prefix (optional)</label>
+        <input type="text" id="opt-prefix" class="option-input" value="${currentOptions.prefix || ''}" placeholder="e.g. sk, pk">
+      </div>
       <div class="option-group">
         <label class="option-label">Quantity</label>
         <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
       </div>
-      <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Generates UUIDs v4 (random)</p>
     `;
-
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-length').addEventListener('change', e => currentOptions.length = parseInt(e.target.value));
+    document.getElementById('opt-prefix').addEventListener('change', e => currentOptions.prefix = e.target.value);
     document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
-  } else {
-    // Generic quantity option
-    optionsPanel.innerHTML = `
+
+  } else if (generatorId === 'jwt') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Length</label>
+        <input type="number" id="opt-length" class="option-input" min="16" max="64" value="${currentOptions.length}">
+      </div>
       <div class="option-group">
         <label class="option-label">Quantity</label>
-        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity || 5}">
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
+      </div>
+      <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Base64-encoded secret for signing JWTs</p>
+    `;
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-length').addEventListener('change', e => currentOptions.length = parseInt(e.target.value));
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
+  } else if (generatorId === 'uuid') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
+      </div>
+      <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Generates random UUID v4 identifiers</p>
+    `;
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+
+  } else if (generatorId === 'hash') {
+    html = `
+      <div class="option-group">
+        <label class="option-label">Algorithm</label>
+        <select id="opt-algorithm" class="option-select">
+          <option value="SHA-256" ${currentOptions.algorithm === 'SHA-256' ? 'selected' : ''}>SHA-256</option>
+          <option value="SHA-1" ${currentOptions.algorithm === 'SHA-1' ? 'selected' : ''}>SHA-1</option>
+          <option value="SHA-384" ${currentOptions.algorithm === 'SHA-384' ? 'selected' : ''}>SHA-384</option>
+          <option value="SHA-512" ${currentOptions.algorithm === 'SHA-512' ? 'selected' : ''}>SHA-512</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label class="option-label">Salt Bytes</label>
+        <input type="number" id="opt-salt" class="option-input" min="8" max="32" value="${currentOptions.saltBytes}">
+      </div>
+      <div class="option-group">
+        <label class="option-label">Quantity</label>
+        <input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity}">
       </div>
     `;
-
+    optionsPanel.innerHTML += html;
+    document.getElementById('opt-algorithm').addEventListener('change', e => currentOptions.algorithm = e.target.value);
+    document.getElementById('opt-salt').addEventListener('change', e => currentOptions.saltBytes = parseInt(e.target.value));
+    document.getElementById('opt-quantity').addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
+  } else {
+    // Fallback (shouldn't happen now)
+    html = `<div class="option-group"><label class="option-label">Quantity</label><input type="number" id="opt-quantity" class="option-input" min="1" max="100" value="${currentOptions.quantity || 5}"></div>`;
+    optionsPanel.innerHTML += html;
     const qty = document.getElementById('opt-quantity');
-    if (qty) {
-      qty.addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
-    }
+    if (qty) qty.addEventListener('change', e => currentOptions.quantity = parseInt(e.target.value));
   }
 }
 
@@ -856,10 +1306,22 @@ function renderResults() {
     const card = document.createElement('div');
     card.className = 'result-card';
 
-    // Extract value (could be .value, .values, or direct object)
-    const value = result.value || result.values || result.hash || '';
-
-    if (Array.isArray(result.values)) {
+    if (result.privateKey && result.publicKey) {
+      // Key pair (RSA or SSH)
+      card.innerHTML = `
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">🔐 Private Key</div>
+          <textarea readonly style="width: 100%; height: 100px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px; font-family: var(--font-mono); font-size: 9px; color: var(--accent-blue); resize: none;">${result.privateKey}</textarea>
+          <button onclick="copyToClipboard(\`${result.privateKey.replace(/`/g, '\\`')}\`)" style="width: 100%; margin-top: 6px; padding: 6px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Copy Private</button>
+        </div>
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">🔓 Public Key</div>
+          <textarea readonly style="width: 100%; height: 100px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px; font-family: var(--font-mono); font-size: 9px; color: var(--accent-blue); resize: none;">${result.publicKey}</textarea>
+          <button onclick="copyToClipboard(\`${result.publicKey.replace(/`/g, '\\`')}\`)" style="width: 100%; margin-top: 6px; padding: 6px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Copy Public</button>
+        </div>
+        <div style="padding: 8px; background: #1a1f2e; border: 1px solid #f85149; border-radius: 4px; font-size: 10px; color: #f85149;">⚠️ Never share your private key. Store it securely.</div>
+      `;
+    } else if (Array.isArray(result.values)) {
       // Multiple values (recovery codes, backup codes)
       card.innerHTML = `
         <div>
@@ -875,6 +1337,7 @@ function renderResults() {
     } else if (result.error) {
       card.innerHTML = `<div style="color: #f85149; font-size: 11px;">${result.error}</div>`;
     } else {
+      const value = result.value || result.hash || '';
       const strength = result.strength ? `<span>${result.strength}</span>` : '';
       const entropy = result.entropy ? `<span>${Math.round(result.entropy)} bits</span>` : '';
       const charset = result.charset ? `<span>${result.charset} chars</span>` : '';

@@ -113,6 +113,98 @@
     return Math.round(seconds / 31536000) + 'y';
   }
 
+  // Helper: Convert ArrayBuffer to PEM format
+  function toPem(keyData, type) {
+    const base64 = bytesToBase64(new Uint8Array(keyData));
+    const lines = base64.match(/.{1,64}/g) || [];
+    const header = `-----BEGIN ${type}-----`;
+    const footer = `-----END ${type}-----`;
+    return [header, ...lines, footer].join('\n');
+  }
+
+  // Helper: Extract SSH public key from SPKI and convert to OpenSSH format
+  function spkiToSshEcPublicKey(spkiDer, comment = '') {
+    try {
+      // SPKI structure: SEQUENCE { SEQUENCE { algorithm OID curve }, BIT STRING point }
+      // For P-256: point is 65 bytes (0x04 + 32-byte X + 32-byte Y)
+      // For P-384: point is 97 bytes (0x04 + 48-byte X + 48-byte Y)
+      const view = new Uint8Array(spkiDer);
+      
+      // Find the BIT STRING (tag 0x03) which contains the public key point
+      let bitStringIndex = -1;
+      for (let i = 0; i < view.length - 2; i++) {
+        if (view[i] === 0x03) {
+          bitStringIndex = i;
+          break;
+        }
+      }
+      
+      if (bitStringIndex === -1) throw new Error('Invalid SPKI structure');
+      
+      // Skip BIT STRING tag and length, then skip the 0x00 padding byte
+      let pointStart = bitStringIndex + 2;
+      if (view[bitStringIndex + 1] > 127) {
+        pointStart += (view[bitStringIndex + 1] & 0x7f);
+      }
+      pointStart += 1; // skip padding byte
+      
+      // Extract the point (65 or 97 bytes depending on curve)
+      const pointLength = view[bitStringIndex + 1] <= 127 ? 
+        view[bitStringIndex + 1] - 1 : 
+        view[bitStringIndex + 2];
+      const point = view.slice(pointStart, pointStart + pointLength);
+      
+      // Determine curve from point length
+      let curveType, curveName;
+      if (point.length === 65) {
+        curveType = 'ecdsa-sha2-nistp256';
+        curveName = 'nistp256';
+      } else if (point.length === 97) {
+        curveType = 'ecdsa-sha2-nistp384';
+        curveName = 'nistp384';
+      } else {
+        throw new Error('Unsupported curve');
+      }
+      
+      // Build SSH wire format
+      let wireFormat = '';
+      
+      // Write key type
+      const keyTypeBytes = new TextEncoder().encode(curveType);
+      wireFormat += String.fromCharCode(
+        (keyTypeBytes.length >> 24) & 0xff,
+        (keyTypeBytes.length >> 16) & 0xff,
+        (keyTypeBytes.length >> 8) & 0xff,
+        keyTypeBytes.length & 0xff
+      ) + new TextDecoder().decode(keyTypeBytes);
+      
+      // Write curve name
+      const curveNameBytes = new TextEncoder().encode(curveName);
+      wireFormat += String.fromCharCode(
+        (curveNameBytes.length >> 24) & 0xff,
+        (curveNameBytes.length >> 16) & 0xff,
+        (curveNameBytes.length >> 8) & 0xff,
+        curveNameBytes.length & 0xff
+      ) + new TextDecoder().decode(curveNameBytes);
+      
+      // Write point
+      wireFormat += String.fromCharCode(
+        (point.length >> 24) & 0xff,
+        (point.length >> 16) & 0xff,
+        (point.length >> 8) & 0xff,
+        point.length & 0xff
+      ) + new TextDecoder().decode(point);
+      
+      // Encode to base64
+      const base64Wire = btoa(wireFormat);
+      const sshKey = `${curveType} ${base64Wire}`;
+      return comment ? `${sshKey} ${comment}` : sshKey;
+    } catch (e) {
+      console.error('SSH key conversion error:', e);
+      throw e;
+    }
+  }
+
   // Generate random password
   async function randomPassword(options = {}) {
     const {
@@ -390,28 +482,65 @@
     };
   }
 
-  // RSA key pair (stub - requires heavy crypto library)
+  // RSA key pair
   async function rsaKeyPair(options = {}) {
-    const { bits = 2048 } = options;
-    // Note: Full RSA generation would require a library like TweetNaCl
-    // For now, return a placeholder
-    return {
-      error: 'RSA key generation requires external library. Consider using Online tools.',
-      bits,
-      format: 'PKCS#8'
-    };
+    const { bits = 2048, purpose = 'encryption' } = options;
+    
+    const keyUsage = purpose === 'signing' ? ['sign', 'verify'] : ['encrypt', 'decrypt'];
+    const algorithm = purpose === 'signing' ? 
+      { name: 'RSASSA-PKCS1-v1_5', modulusLength: bits, publicExponent: [1, 0, 1], hash: 'SHA-256' } :
+      { name: 'RSA-OAEP', modulusLength: bits, publicExponent: [1, 0, 1], hash: 'SHA-256' };
+    
+    try {
+      const keyPair = await crypto.subtle.generateKey(algorithm, true, keyUsage);
+      
+      const privateKeyDer = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+      const publicKeyDer = await crypto.subtle.exportKey('spki', keyPair.publicKey);
+      
+      return {
+        privateKey: toPem(privateKeyDer, 'RSA PRIVATE KEY'),
+        publicKey: toPem(publicKeyDer, 'RSA PUBLIC KEY'),
+        bits,
+        algorithm: purpose === 'signing' ? 'RSASSA-PKCS1-v1_5' : 'RSA-OAEP'
+      };
+    } catch (err) {
+      return {
+        error: `RSA key generation failed: ${err.message}`,
+        bits
+      };
+    }
   }
 
-  // SSH key pair
+  // SSH key pair (ECDSA P-256)
   async function sshKeyPair(options = {}) {
-    const { algorithm = 'Ed25519', format = 'OpenSSH' } = options;
-    // Note: Full SSH generation requires TweetNaCl.js
-    // For now, return a placeholder
-    return {
-      error: 'SSH key generation requires TweetNaCl.js library. Add to CSP and load separately.',
-      algorithm,
-      format
-    };
+    const { namedCurve = 'P-256', comment = 'user@host' } = options;
+    
+    try {
+      const keyPair = await crypto.subtle.generateKey(
+        { name: 'ECDSA', namedCurve },
+        true,
+        ['sign', 'verify']
+      );
+      
+      const privateKeyDer = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+      const publicKeyDer = await crypto.subtle.exportKey('spki', keyPair.publicKey);
+      
+      const privateKeyPem = toPem(privateKeyDer, 'EC PRIVATE KEY');
+      const publicKeySsh = spkiToSshEcPublicKey(publicKeyDer, comment);
+      
+      return {
+        privateKey: privateKeyPem,
+        publicKey: publicKeySsh,
+        algorithm: `ECDSA ${namedCurve}`,
+        format: 'OpenSSH',
+        comment
+      };
+    } catch (err) {
+      return {
+        error: `SSH key generation failed: ${err.message}`,
+        algorithm: namedCurve
+      };
+    }
   }
 
   // API key
