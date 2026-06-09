@@ -426,7 +426,7 @@
 <body>
 
 <div id="app">
-  <div id="header"></div>
+  <header></header>
   <aside id="sidebar"></aside>
 
   <main>
@@ -547,11 +547,11 @@ let activityLog = null;
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
   // Set up header
-  initHeader({
+  renderHeader({
     title: 'random',
     showTabs: false,
     showGithub: true,
-    githubPath: 'humor4fun/tools/tree/main/random'
+    githubPath: 'random'
   });
 
   // Set up activity log
